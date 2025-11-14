@@ -3,34 +3,109 @@ title: "Assessment"
 output: html_document
 date: "2025-10-31"
 ---
+How does the prescription of continuous glucose monitoring(CGM) devices vary over time and between regions in Scotland - looking specifically at how it varies based on different demographic data?
 
-```{r setup, include=FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+Loading the required packages
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r, echo = TRUE, warning=FALSE, message=FALSE}
+#importing required packages
+library(tidyverse)
+library(janitor)
+library(gt)
+library(here)
 ```
 
-## Including Plots
+Loading all of the required data
 
-You can also embed plots, for example:
+```{r, message = FALSE, warning = FALSE}
+#loading all prescription data from https://www.opendata.nhs.scot/dataset/prescriptions-in-the-community which is saved locally on my device. Commented out so it is quicker to make html document
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+#files <- list.files(here("data"), pattern = "csv")
+#consecutive_data <- files %>% 
+  #map_dfr(~read_csv(here("data", .)) %>% 
+            #mutate(DMDCode = 0) %>% 
+            #select(-DMDCode)) %>% 
+  #clean_names()
+#loading all healthboard names
+hb_names <- read_csv("https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv") %>% 
+  clean_names() %>% 
+  select(hb, hb_name)
+
+#loading population data by health board
+
+population_data <- read_csv(here( "data", "data_filtered", "UV102a_age_health_board_census.csv"), skip = 10) %>% 
+  rename(Spare = "...6",
+         hb_name = "Health Board Area 2019",
+         hb_population = Count) %>% 
+  filter(Age == "All people" & Sex == "All people") %>% 
+  select(hb_name, hb_population) %>% 
+  mutate(hb_name = paste("NHS", hb_name))
+
+#reading csv for CGM that has been made
+data_cgm <- read_csv(file = here::here("data", "data_filtered", "data_cgm.csv"))
+```
+
+Cleaning Variable names and then saving CSV file
+
+```{r, message = FALSE}
+#Removing all rows except those where CGMs were prescribed with 214800001 being the item code in the BNF for all CGM devices +
+#Combining Freestyle Libre Sensor with Sensor Kit +
+#Chaging the paid_date_month column into ymd +
+#Combining hbt with hbt2014 and removing unnessary columns
+#data_cgm <- consecutive_data %>% 
+  #filter(str_detect(bnf_item_code, "214800001")) %>% 
+  #mutate(bnf_item_description = data_cgm_test <- gsub("FREESTYLE LIBRE SENSOR KIT", "FREESTYLE LIBRE SENSOR", bnf_item_description)) %>% 
+  #mutate(paid_date_month = parse_date_time(paid_date_month, "ym")) %>% 
+  #mutate(hbt = coalesce(hbt2014, hbt)) %>%
+  #select(-c(hbt2014, prescribed_type, class_of_preparation_code)) %>% 
+  #select(hbt, everything())
+
+#commented out as i have loaded saved csv file
+
+#Combining health boards which changed codes boundary changes do not matter
+
+data_cgm <- data_cgm %>% 
+  mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"))
+
+#Saving CSV data to make working with it easier
+
+#write_csv(data_cgm, file = here::here("data", "data_filtered", "data_cgm.csv"))
+#commented out as i have loaded csv
+```
+
+Creating graph of CGM prescriptions overtime by health board normalized by population in each health board 
+
+```{r warning = FALSE}
+
+#Adding health board names and population estimates to the CGM dataset and then calculating rate per 100k population
+graph_per_100k <- data_cgm %>% 
+  left_join(hb_names, join_by(hbt == hb)) %>% 
+  left_join(population_data, join_by(hb_name)) %>% 
+  group_by(paid_date_month, hb_name, hb_population) %>% 
+  summarise(total = sum(paid_quantity),
+            total_per_100k = unique((total/hb_population)*100000)) %>% 
+  filter(!is.na(hb_name))
+
+#creating graph of CGM prescription per 100k by health board overtime
+
+graph_per_100k %>% 
+  ggplot(aes(x = paid_date_month, y = total_per_100k)) +
+  geom_line(na.rm = TRUE) +
+  facet_wrap(~hb_name) +
+  theme_bw() +
+  labs(title = "CGM prescriptions overtime",
+       subtitle = "By health board in Scotland",
+       x = "Year",
+       y = "CGM Prescriptions (per 100k)")
 
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+The graph depicts all health boards increasing prescriptions in CGMs overtime. With NHS Dumfries and Galloway, Shetland and Western Isles prescribing more per population than any other health boards
 
-```{r}
-2 + 2
-4 + 4
-```
+### Future Plans
 
+I plan to investigate the data in more detail in regards to demographics. Looking into differences in prescription of CGMs between practices based on SIMD classification and age groups within area. I will also try and obtain public information on diabetes prevalence and try and come this to the data to see if areas with more CGM prescriptions have higher diabetes rates.
