@@ -104,7 +104,7 @@ graph_per_100k %>%
 
 ```
 
-The graph depicts all health boards increasing prescriptions in CGMs overtime. With NHS Dumfries and Galloway, Shetland and Western Isles prescribing more per population than any other health boards
+The graph depicts all health boards increasing prescriptions in CGMs overtime. With NHS Dumfries and Galloway, Shetland and Western Isles prescribing more per 100,000 population than any other health boards
 
 ### Future Plans
 
