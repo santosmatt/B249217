@@ -3,8 +3,11 @@ title: "Assessment"
 output: html_document
 date: "2025-10-31"
 ---
+### Topic of focus
+
 How does the prescription of continuous glucose monitoring(CGM) devices vary over time and between regions in Scotland - looking specifically at how it varies based on different demographic data?
 
+### Graph
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -53,7 +56,6 @@ data_cgm <- data_cgm %>%
 Creating graph of CGM prescriptions overtime by health board normalized by population in each health board 
 
 ```{r warning = FALSE}
-
 #Adding health board names and population estimates to the CGM dataset and then calculating rate per 100k population
 graph_per_100k <- data_cgm %>% 
   left_join(hb_names, join_by(hbt == hb)) %>% 
@@ -73,11 +75,11 @@ graph_per_100k %>%
   labs(title = "CGM prescriptions overtime",
        subtitle = "By health board in Scotland",
        x = "Year",
-       y = "CGM Prescriptions (per 100k)")
-
+       y = "CGM Prescriptions (per 100k)") +
+  theme(strip.text = element_text(size = 7))
 ```
 
-The graph depicts all health boards increasing prescriptions in CGMs overtime. With NHS Dumfries and Galloway, Shetland and Western Isles prescribing more per 100,000 population than any other health boards
+The graph depicts all health boards increasing prescriptions in CGMs steadily overtime from November 2017 to August 2025. But there are geographic differences in the rate and total number of prescription between healthboards. NHS Dumfries and Galloway, Shetland and Western Isles prescribing more per 100,000 population in 2025 than any other health boards, and NHS Ayrshire and Arran, Tayside and Orkney having lower rates. 
 
 ### Future Plans
 
