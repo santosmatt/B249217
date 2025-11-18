@@ -9,7 +9,7 @@ How does the prescription of continuous glucose monitoring(CGM) devices vary ove
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Loading the required packages
+
 
 ```{r, echo = TRUE, warning=FALSE, message=FALSE}
 #importing required packages
@@ -19,7 +19,7 @@ library(gt)
 library(here)
 ```
 
-Loading all of the required data
+
 
 ```{r, message = FALSE, warning = FALSE}
 #loading all prescription data from https://www.opendata.nhs.scot/dataset/prescriptions-in-the-community which is saved locally on my device. Commented out so it is quicker to make html document
@@ -46,7 +46,7 @@ population_data <- read_csv(here( "data", "data_filtered", "UV102a_age_health_bo
   mutate(hb_name = paste("NHS", hb_name))
 
 #reading csv for CGM that has been made
-data_cgm <- read_csv(file = here::here("data", "data_filtered", "data_cgm.csv"))
+data_cgm <- read_csv(file = here("data", "data_filtered", "data_cgm.csv"))
 ```
 
 Cleaning Variable names and then saving CSV file
