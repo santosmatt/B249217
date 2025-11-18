@@ -13,7 +13,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-
 ```{r, echo = TRUE, warning=FALSE, message=FALSE}
 #importing required packages
 library(tidyverse)
@@ -42,11 +41,9 @@ population_data <- read_csv(here( "data", "data_filtered", "UV102a_age_health_bo
 
 #reading csv for CGM that has been made
 data_cgm <- read_csv(file = here("data", "data_filtered", "data_cgm.csv"))
-#reading csv for CGM that has been made and cleaned partially
-data_cgm <- read_csv(file = here::here("data", "data_filtered", "data_cgm.csv"))
 ```
 
-Cleaning Variable names and then saving CSV file
+
 
 ```{r, message = FALSE}
 #Combining health boards which changed codes boundary changes do not matter
@@ -55,9 +52,7 @@ data_cgm <- data_cgm %>%
   mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"))
 ```
 
-Creating graph of CGM prescriptions overtime by health board normalized by population in each health board 
-
-```{r warning = FALSE}
+```{r, message=FALSE}
 #Adding health board names and population estimates to the CGM dataset and then calculating rate per 100k population
 graph_per_100k <- data_cgm %>% 
   left_join(hb_names, join_by(hbt == hb)) %>% 
@@ -66,7 +61,10 @@ graph_per_100k <- data_cgm %>%
   summarise(total = sum(paid_quantity),
             total_per_100k = unique((total/hb_population)*100000)) %>% 
   filter(!is.na(hb_name))
+```
 
+
+```{r warning = FALSE}
 #creating graph of CGM prescription per 100k by health board overtime
 
 graph_per_100k %>% 

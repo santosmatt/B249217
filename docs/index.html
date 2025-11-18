@@ -363,13 +363,11 @@ specifically at how it varies based on different demographic data?</p>
 </div>
 <div id="graph" class="section level3">
 <h3>Graph</h3>
-<p>Loading the required packages</p>
 <pre class="r"><code>#importing required packages
 library(tidyverse)
 library(janitor)
 library(gt)
 library(here)</code></pre>
-<p>Loading all of the required data</p>
 <pre class="r"><code>#loading all healthboard names
 hb_names &lt;- read_csv(&quot;https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv&quot;) %&gt;% 
   clean_names() %&gt;% 
@@ -385,15 +383,12 @@ population_data &lt;- read_csv(here( &quot;data&quot;, &quot;data_filtered&quot;
   select(hb_name, hb_population) %&gt;% 
   mutate(hb_name = paste(&quot;NHS&quot;, hb_name))
 
-#reading csv for CGM that has been made and cleaned partially
-data_cgm &lt;- read_csv(file = here::here(&quot;data&quot;, &quot;data_filtered&quot;, &quot;data_cgm.csv&quot;))</code></pre>
-<p>Cleaning Variable names and then saving CSV file</p>
+#reading csv for CGM that has been made
+data_cgm &lt;- read_csv(file = here(&quot;data&quot;, &quot;data_filtered&quot;, &quot;data_cgm.csv&quot;))</code></pre>
 <pre class="r"><code>#Combining health boards which changed codes boundary changes do not matter
 
 data_cgm &lt;- data_cgm %&gt;% 
   mutate(hbt = recode(hbt, &quot;S08000018&quot; = &quot;S08000029&quot;, &quot;S08000021&quot; = &quot;S08000031&quot;, &quot;S08000023&quot; = &quot;S08000032&quot;, &quot;S08000027&quot; = &quot;S08000030&quot;))</code></pre>
-<p>Creating graph of CGM prescriptions overtime by health board
-normalized by population in each health board</p>
 <pre class="r"><code>#Adding health board names and population estimates to the CGM dataset and then calculating rate per 100k population
 graph_per_100k &lt;- data_cgm %&gt;% 
   left_join(hb_names, join_by(hbt == hb)) %&gt;% 
@@ -402,8 +397,6 @@ graph_per_100k &lt;- data_cgm %&gt;%
   summarise(total = sum(paid_quantity),
             total_per_100k = unique((total/hb_population)*100000)) %&gt;% 
   filter(!is.na(hb_name))</code></pre>
-<pre><code>## `summarise()` has grouped output by &#39;paid_date_month&#39;, &#39;hb_name&#39;. You can
-## override using the `.groups` argument.</code></pre>
 <pre class="r"><code>#creating graph of CGM prescription per 100k by health board overtime
 
 graph_per_100k %&gt;% 
