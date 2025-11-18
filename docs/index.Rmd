@@ -12,7 +12,7 @@ How does the prescription of continuous glucose monitoring(CGM) devices vary ove
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Loading the required packages
+
 
 ```{r, echo = TRUE, warning=FALSE, message=FALSE}
 #importing required packages
@@ -22,7 +22,7 @@ library(gt)
 library(here)
 ```
 
-Loading all of the required data
+
 
 ```{r, message = FALSE, warning = FALSE}
 #loading all healthboard names
@@ -40,6 +40,8 @@ population_data <- read_csv(here( "data", "data_filtered", "UV102a_age_health_bo
   select(hb_name, hb_population) %>% 
   mutate(hb_name = paste("NHS", hb_name))
 
+#reading csv for CGM that has been made
+data_cgm <- read_csv(file = here("data", "data_filtered", "data_cgm.csv"))
 #reading csv for CGM that has been made and cleaned partially
 data_cgm <- read_csv(file = here::here("data", "data_filtered", "data_cgm.csv"))
 ```
