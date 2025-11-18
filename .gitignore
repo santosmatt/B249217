@@ -46,4 +46,8 @@ po/*~
 rsconnect/
 
 # data folder
-data/
+data
+
+#ignoring .docs file
+
+*.docx

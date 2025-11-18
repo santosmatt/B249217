@@ -3,8 +3,11 @@ title: "Assessment"
 output: html_document
 date: "2025-10-31"
 ---
+### Topic of focus
+
 How does the prescription of continuous glucose monitoring(CGM) devices vary over time and between regions in Scotland - looking specifically at how it varies based on different demographic data?
 
+### Graph
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -22,14 +25,6 @@ library(here)
 
 
 ```{r, message = FALSE, warning = FALSE}
-#loading all prescription data from https://www.opendata.nhs.scot/dataset/prescriptions-in-the-community which is saved locally on my device. Commented out so it is quicker to make html document
-
-#files <- list.files(here("data"), pattern = "csv")
-#consecutive_data <- files %>% 
-  #map_dfr(~read_csv(here("data", .)) %>% 
-            #mutate(DMDCode = 0) %>% 
-            #select(-DMDCode)) %>% 
-  #clean_names()
 #loading all healthboard names
 hb_names <- read_csv("https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv") %>% 
   clean_names() %>% 
@@ -47,40 +42,22 @@ population_data <- read_csv(here( "data", "data_filtered", "UV102a_age_health_bo
 
 #reading csv for CGM that has been made
 data_cgm <- read_csv(file = here("data", "data_filtered", "data_cgm.csv"))
+#reading csv for CGM that has been made and cleaned partially
+data_cgm <- read_csv(file = here::here("data", "data_filtered", "data_cgm.csv"))
 ```
 
 Cleaning Variable names and then saving CSV file
 
 ```{r, message = FALSE}
-#Removing all rows except those where CGMs were prescribed with 214800001 being the item code in the BNF for all CGM devices +
-#Combining Freestyle Libre Sensor with Sensor Kit +
-#Chaging the paid_date_month column into ymd +
-#Combining hbt with hbt2014 and removing unnessary columns
-#data_cgm <- consecutive_data %>% 
-  #filter(str_detect(bnf_item_code, "214800001")) %>% 
-  #mutate(bnf_item_description = data_cgm_test <- gsub("FREESTYLE LIBRE SENSOR KIT", "FREESTYLE LIBRE SENSOR", bnf_item_description)) %>% 
-  #mutate(paid_date_month = parse_date_time(paid_date_month, "ym")) %>% 
-  #mutate(hbt = coalesce(hbt2014, hbt)) %>%
-  #select(-c(hbt2014, prescribed_type, class_of_preparation_code)) %>% 
-  #select(hbt, everything())
-
-#commented out as i have loaded saved csv file
-
 #Combining health boards which changed codes boundary changes do not matter
 
 data_cgm <- data_cgm %>% 
   mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"))
-
-#Saving CSV data to make working with it easier
-
-#write_csv(data_cgm, file = here::here("data", "data_filtered", "data_cgm.csv"))
-#commented out as i have loaded csv
 ```
 
 Creating graph of CGM prescriptions overtime by health board normalized by population in each health board 
 
 ```{r warning = FALSE}
-
 #Adding health board names and population estimates to the CGM dataset and then calculating rate per 100k population
 graph_per_100k <- data_cgm %>% 
   left_join(hb_names, join_by(hbt == hb)) %>% 
@@ -100,11 +77,11 @@ graph_per_100k %>%
   labs(title = "CGM prescriptions overtime",
        subtitle = "By health board in Scotland",
        x = "Year",
-       y = "CGM Prescriptions (per 100k)")
-
+       y = "CGM Prescriptions (per 100k)") +
+  theme(strip.text = element_text(size = 7))
 ```
 
-The graph depicts all health boards increasing prescriptions in CGMs overtime. With NHS Dumfries and Galloway, Shetland and Western Isles prescribing more per 100,000 population than any other health boards
+The graph depicts all health boards increasing prescriptions in CGMs steadily overtime from November 2017 to August 2025. But there are geographic differences in the rate and total number of prescription between healthboards. NHS Dumfries and Galloway, Shetland and Western Isles prescribing more per 100,000 population in 2025 than any other health boards, and NHS Ayrshire and Arran, Tayside and Orkney having lower rates. 
 
 ### Future Plans
 
