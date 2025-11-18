@@ -9,6 +9,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
+<meta name="author" content="Matthew Santos" />
 
 <meta name="date" content="2025-10-31" />
 
@@ -208,6 +209,83 @@ window.buildTabsets = function(tocID) {
 };
 
 </script>
+<script>
+window.initializeCodeFolding = function(show) {
+
+  // handlers for show-all and hide all
+  $("#rmd-show-all-code").click(function() {
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('show');
+    });
+  });
+  $("#rmd-hide-all-code").click(function() {
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('hide');
+    });
+  });
+
+  // index for unique code element ids
+  var currentIndex = 1;
+
+  // select all R code blocks
+  var rCodeBlocks = $('pre.r, pre.python, pre.bash, pre.sql, pre.cpp, pre.stan, pre.julia, pre.foldable');
+  rCodeBlocks.each(function() {
+    // skip if the block has fold-none class
+    if ($(this).hasClass('fold-none')) return;
+
+    // create a collapsable div to wrap the code in
+    var div = $('<div class="collapse r-code-collapse"></div>');
+    var showThis = (show || $(this).hasClass('fold-show')) && !$(this).hasClass('fold-hide');
+    var id = 'rcode-643E0F36' + currentIndex++;
+    div.attr('id', id);
+    $(this).before(div);
+    $(this).detach().appendTo(div);
+
+    // add a show code button right above
+    var showCodeText = $('<span>' + (showThis ? 'Hide' : 'Show') + '</span>');
+    var showCodeButton = $('<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm code-folding-btn pull-right float-right"></button>');
+    showCodeButton.append(showCodeText);
+    showCodeButton
+        .attr('data-toggle', 'collapse')
+        .attr('data-bs-toggle', 'collapse') // BS5
+        .attr('data-target', '#' + id)
+        .attr('data-bs-target', '#' + id)   // BS5
+        .attr('aria-expanded', showThis)
+        .attr('aria-controls', id);
+
+    var buttonRow = $('<div class="row"></div>');
+    var buttonCol = $('<div class="col-md-12"></div>');
+
+    buttonCol.append(showCodeButton);
+    buttonRow.append(buttonCol);
+
+    div.before(buttonRow);
+
+    // show the div if necessary
+    if (showThis) div.collapse('show');
+
+    // update state of button on show/hide
+    //   * Change text
+    //   * add a class for intermediate states styling
+    div.on('hide.bs.collapse', function () {
+      showCodeText.text('Show');
+      showCodeButton.addClass('btn-collapsing');
+    });
+    div.on('hidden.bs.collapse', function () {
+      showCodeButton.removeClass('btn-collapsing');
+    });
+    div.on('show.bs.collapse', function () {
+      showCodeText.text('Hide');
+      showCodeButton.addClass('btn-expanding');
+    });
+    div.on('shown.bs.collapse', function () {
+      showCodeButton.removeClass('btn-expanding');
+    });
+
+  });
+
+}
+</script>
 <style type="text/css">.hljs-literal {
 color: #990073;
 }
@@ -331,6 +409,9 @@ display: none;
 </style>
 
 <!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
 
 
 
@@ -347,22 +428,57 @@ display: none;
 
 <div id="header">
 
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
 
 
 <h1 class="title toc-ignore">Assessment</h1>
+<h3 class="subtitle">Investigating Continous Glucose Monitor
+Presecriptions in Scotland</h3>
+<h4 class="author">Matthew Santos</h4>
 <h4 class="date">2025-10-31</h4>
 
 </div>
 
+<div id="TOC">
+<ul>
+<li><a href="#introduction" id="toc-introduction"><span class="toc-section-number">1</span> Introduction</a>
+<ul>
+<li><a href="#topic-of-focus" id="toc-topic-of-focus"><span class="toc-section-number">1.1</span> Topic of focus</a></li>
+</ul></li>
+<li><a href="#methods" id="toc-methods"><span class="toc-section-number">2</span> Methods</a></li>
+<li><a href="#results" id="toc-results"><span class="toc-section-number">3</span> Results</a>
+<ul>
+<li><a href="#graph" id="toc-graph"><span class="toc-section-number">3.1</span> Graph</a></li>
+<li><a href="#future-plans" id="toc-future-plans"><span class="toc-section-number">3.2</span> Future Plans</a></li>
+</ul></li>
+<li><a href="#conclusions" id="toc-conclusions"><span class="toc-section-number">4</span> Conclusions</a></li>
+<li><a href="#references" id="toc-references"><span class="toc-section-number">5</span> References</a></li>
+</ul>
+</div>
 
-<div id="topic-of-focus" class="section level3">
-<h3>Topic of focus</h3>
+<div id="introduction" class="section level1" number="1">
+<h1><span class="header-section-number">1</span> Introduction</h1>
+<div id="topic-of-focus" class="section level2" number="1.1">
+<h2><span class="header-section-number">1.1</span> Topic of focus</h2>
 <p>How does the prescription of continuous glucose monitoring(CGM)
 devices vary over time and between regions in Scotland - looking
 specifically at how it varies based on different demographic data?</p>
 </div>
-<div id="graph" class="section level3">
-<h3>Graph</h3>
+</div>
+<div id="methods" class="section level1" number="2">
+<h1><span class="header-section-number">2</span> Methods</h1>
+</div>
+<div id="results" class="section level1" number="3">
+<h1><span class="header-section-number">3</span> Results</h1>
+<div id="graph" class="section level2" number="3.1">
+<h2><span class="header-section-number">3.1</span> Graph</h2>
 <pre class="r"><code>#importing required packages
 library(tidyverse)
 library(janitor)
@@ -418,14 +534,21 @@ Isles prescribing more per 100,000 population in 2025 than any other
 health boards, and NHS Ayrshire and Arran, Tayside and Orkney having
 lower rates.</p>
 </div>
-<div id="future-plans" class="section level3">
-<h3>Future Plans</h3>
+<div id="future-plans" class="section level2" number="3.2">
+<h2><span class="header-section-number">3.2</span> Future Plans</h2>
 <p>I plan to investigate the data in more detail in regards to
 demographics. Looking into differences in prescription of CGMs between
 practices based on SIMD classification and age groups within area. I
 will also try and obtain public information on diabetes prevalence and
 try and come this to the data to see if areas with more CGM
 prescriptions have higher diabetes rates.</p>
+</div>
+</div>
+<div id="conclusions" class="section level1" number="4">
+<h1><span class="header-section-number">4</span> Conclusions</h1>
+</div>
+<div id="references" class="section level1" number="5">
+<h1><span class="header-section-number">5</span> References</h1>
 </div>
 
 
@@ -461,6 +584,11 @@ $(document).ready(function () {
 </script>
 
 <!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "show");
+});
+</script>
 
 
 <!-- dynamically load mathjax for compatibility with self-contained -->
