@@ -484,6 +484,25 @@ library(tidyverse)
 library(janitor)
 library(gt)
 library(here)</code></pre>
+<pre class="r"><code>#custom theme for plots
+theme_custom &lt;- theme(
+
+text = element_text(size = 12),
+
+panel.grid = element_blank(),
+
+panel.grid.major.y = element_line(colour = &quot;#e3e1e1&quot;,
+
+linetype = 2),
+
+plot.title.position = &#39;plot&#39;,
+
+legend.position = &#39;top&#39;,
+
+legend.title = element_blank()
+
+)
+theme_set(theme_minimal() + theme_custom)</code></pre>
 <pre class="r"><code>#loading all healthboard names
 hb_names &lt;- read_csv(&quot;https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv&quot;) %&gt;% 
   clean_names() %&gt;% 
