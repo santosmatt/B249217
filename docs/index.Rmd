@@ -4,9 +4,11 @@ subtitle: "Investigating Trends Continous Glucose Monitor Presecriptions in Scot
 output: 
   html_document:
     toc: true
+    toc_float: true
     number_sections: true
     code_folding: show 
 date: "2025-10-31"
+runtime: shiny
 ---
 # Introduction
 ## Topic of focus
@@ -28,6 +30,7 @@ library(tidyverse)
 library(janitor)
 library(gt)
 library(here)
+library(shiny)
 ```
 
 ```{r}
@@ -106,12 +109,34 @@ graph_per_100k %>%
 
 The graph depicts all health boards increasing prescriptions in CGMs steadily overtime from November 2017 to August 2025. But there are geographic differences in the rate and total number of prescription between healthboards. NHS Dumfries and Galloway, Shetland and Western Isles prescribing more per 100,000 population in 2025 than any other health boards, and NHS Ayrshire and Arran, Tayside and Orkney having lower rates. 
 
-## Future Plans
+```{r}
+selectInput("n_breaks", label = "Health Board",
+              choices = hb_names$hb_name, selected = "NHS Borders")
 
+```
+
+### ...that build a histogram.
+
+```{r echo = FALSE}
+renderPlot({
+  graph_per_100k %>% 
+    filter(hb_name == as.character(input$n_breaks)) %>% 
+      ggplot(aes(x = paid_date_month, y = total_per_100k)) +
+      geom_line(na.rm = TRUE) +
+      theme_bw() +
+      facet_wrap(~hb_name) +
+      labs(title = "CGM prescriptions overtime",
+           subtitle = "By health board in Scotland",
+           x = "Year",
+           y = "CGM Prescriptions (per 100k)") +
+      theme(strip.text = element_text(size = 7))
+})
+```
+
+
+## Future Plans
 I plan to investigate the data in more detail in regards to demographics. Looking into differences in prescription of CGMs between practices based on SIMD classification and age groups within area. I will also try and obtain public information on diabetes prevalence and try and come this to the data to see if areas with more CGM prescriptions have higher diabetes rates.
 
 # Limitations
-
 # Conclusions 
-
 # References 
