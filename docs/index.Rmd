@@ -1,6 +1,6 @@
 ---
 title: "Assessment"
-subtitle: "Investigating Trends Continous Glucose Monitor Presecriptions in Scotland"
+subtitle: "Investigating Trends in Continuous Glucose Monitor Presecriptions in Scotland"
 output: 
   html_document:
     toc: true
@@ -14,17 +14,14 @@ runtime: shiny
 ## Topic of focus
 
 How does the prescription of continuous glucose monitoring(CGM) devices vary over time and between regions in Scotland - looking specifically at how it varies based on different demographic data?
-
 # Methods
 
-# Results
-## Graph
-```{r setup, include = FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include = TRUE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
 
-```{r, echo = TRUE, warning=FALSE, message=FALSE}
+```{r}
 #importing required packages
 library(tidyverse)
 library(janitor)
@@ -45,19 +42,15 @@ legend.position = 'top',
 legend.title = element_blank())
 
 theme_set(theme_minimal() + theme_custom)
-
-
 ```
 
-
-```{r, message = FALSE, warning = FALSE}
+```{r}
 #loading all healthboard names
 hb_names <- read_csv("https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv") %>% 
   clean_names() %>% 
   select(hb, hb_name)
 
 #loading population data by health board
-
 population_data <- read_csv(here( "data", "data_filtered", "UV102a_age_health_board_census.csv"), skip = 10) %>% 
   rename(Spare = "...6",
          hb_name = "Health Board Area 2019",
@@ -68,18 +61,29 @@ population_data <- read_csv(here( "data", "data_filtered", "UV102a_age_health_bo
 
 #reading csv for CGM that has been made
 data_cgm <- read_csv(file = here("data", "data_filtered", "data_cgm.csv"))
+
+#loading all prescription data from 10/2017 to 2025
+links <- read.csv(here("data", "file_links.csv")) %>% 
+  select(link) %>% 
+  pull()
+
+raw_prescription_data <- links %>% 
+  map(read_csv) %>% 
+  list_rbind()
+
 ```
 
-
-
-```{r, message = FALSE}
+```{r}
 #Combining health boards which changed codes boundary changes do not matter
 
 data_cgm <- data_cgm %>% 
   mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"))
 ```
 
-```{r, message=FALSE}
+# Results
+## CGM presriptions over time by healthboard
+
+```{r}
 #Adding health board names and population estimates to the CGM dataset and then calculating rate per 100k population
 graph_per_100k <- data_cgm %>% 
   left_join(hb_names, join_by(hbt == hb)) %>% 
@@ -90,8 +94,7 @@ graph_per_100k <- data_cgm %>%
   filter(!is.na(hb_name))
 ```
 
-
-```{r warning = FALSE}
+```{r}
 #creating graph of CGM prescription per 100k by health board overtime
 
 graph_per_100k %>% 
@@ -109,15 +112,15 @@ graph_per_100k %>%
 
 The graph depicts all health boards increasing prescriptions in CGMs steadily overtime from November 2017 to August 2025. But there are geographic differences in the rate and total number of prescription between healthboards. NHS Dumfries and Galloway, Shetland and Western Isles prescribing more per 100,000 population in 2025 than any other health boards, and NHS Ayrshire and Arran, Tayside and Orkney having lower rates. 
 
+## Interactive map of CGM prescriptions/number of diabetes patients per heathboard in the years 2018 and 2023
+
 ```{r}
 selectInput("n_breaks", label = "Health Board",
               choices = hb_names$hb_name, selected = "NHS Borders")
 
 ```
 
-### ...that build a histogram.
-
-```{r echo = FALSE}
+```{r}
 renderPlot({
   graph_per_100k %>% 
     filter(hb_name == as.character(input$n_breaks)) %>% 
@@ -133,10 +136,21 @@ renderPlot({
 })
 ```
 
+## Table showing the proportion of people in each age group by board compared to number of CGM prescriptions
+```{r}
+
+```
+
+## CGM prescriptions by GP practise SIMD
+```{r}
+
+```
 
 ## Future Plans
 I plan to investigate the data in more detail in regards to demographics. Looking into differences in prescription of CGMs between practices based on SIMD classification and age groups within area. I will also try and obtain public information on diabetes prevalence and try and come this to the data to see if areas with more CGM prescriptions have higher diabetes rates.
 
 # Limitations
+
 # Conclusions 
+
 # References 
