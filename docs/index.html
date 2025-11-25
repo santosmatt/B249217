@@ -1586,13 +1586,14 @@ library(janitor)
 library(gt)
 library(here)
 library(sf) #draw geographical map</code></pre>
+<pre class="r"><code>#creating function to import data then clean names
+import_clean_names &lt;- function(file_path){
+  read_csv(file_path)%&gt;% 
+    clean_names()}</code></pre>
 <pre class="r"><code>#loading all health board names
-hb_names &lt;- read_csv(&quot;https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv&quot;) %&gt;% 
-  clean_names() %&gt;% 
-  select(hb, hb_name)</code></pre>
+hb_names &lt;- import_clean_names(&quot;https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv&quot;) %&gt;% select(hb, hb_name)</code></pre>
 <pre class="r"><code>#importing health board population estimate data
-population_data_raw &lt;- read_csv(&quot;https://www.opendata.nhs.scot/dataset/7f010430-6ce1-4813-b25c-f7f335bdc4dc/resource/27a72cc8-d6d8-430c-8b4f-3109a9ceadb1/download/hb2019_pop_est_03102025.csv&quot;) %&gt;% 
-  clean_names() </code></pre>
+population_data_raw &lt;- import_clean_names(&quot;https://www.opendata.nhs.scot/dataset/7f010430-6ce1-4813-b25c-f7f335bdc4dc/resource/27a72cc8-d6d8-430c-8b4f-3109a9ceadb1/download/hb2019_pop_est_03102025.csv&quot;)</code></pre>
 <pre class="r"><code>#tidying health board population data and splitting ages into distinct groups
 population_data &lt;- population_data_raw %&gt;% 
   filter(sex == &quot;All&quot;, year &gt;= 2017, hb != &quot;S92000003&quot;) %&gt;% #removing uneeded data
@@ -1621,49 +1622,39 @@ data_cgm &lt;- read_csv(here(&quot;data&quot;, &quot;data_filtered&quot;, &quot;
 hb_map &lt;- st_read(here(&quot;data&quot;,&quot;SG_NHS_HealthBoards_2019&quot;,&quot;SG_NHS_HealthBoards_2019.shp&quot;)) %&gt;% 
   clean_names() %&gt;% 
   mutate(hb_name = paste(&quot;NHS&quot;, hb_name)) #chaning names to have NHS infront </code></pre>
-<pre><code>## Reading layer `SG_NHS_HealthBoards_2019&#39; from data source 
-##   `C:\Users\Matthew Santos\OneDrive\Medical School\Year 3\Data science\B249217Assesment2025\data\SG_NHS_HealthBoards_2019\SG_NHS_HealthBoards_2019.shp&#39; 
-##   using driver `ESRI Shapefile&#39;
-## Simple feature collection with 14 features and 4 fields
-## Geometry type: MULTIPOLYGON
-## Dimension:     XY
-## Bounding box:  xmin: 5512.998 ymin: 530250.8 xmax: 470332 ymax: 1220302
-## Projected CRS: OSGB36 / British National Grid</code></pre>
 <pre class="r"><code>#Importing SIMD data
-simd_data &lt;- read.csv(&quot;https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/acade396-8430-4b34-895a-b3e757fa346e/download/simd2020v2_22062020.csv&quot;) %&gt;% 
-  clean_names() %&gt;% 
+simd_data &lt;- import_clean_names(&quot;https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/acade396-8430-4b34-895a-b3e757fa346e/download/simd2020v2_22062020.csv&quot;) %&gt;% 
   rename(simd_decile = simd2020v2country_decile) %&gt;% #changing name for easier coding
   select(data_zone, hb, simd_decile) #only keeping needed columns</code></pre>
 <pre class="r"><code>#importing data about gp practice names, locations and populations
-gp_practice_data &lt;- read.csv(&quot;https://www.opendata.nhs.scot/dataset/f23655c3-6e23-4103-a511-a80d998adb90/resource/47557411-7eda-4278-9d6d-d26ed2ceab5a/download/practice_contact_details_20251001_o&quot;) %&gt;% 
-  clean_names() %&gt;% 
+gp_practice_data &lt;- import_clean_names(&quot;https://www.opendata.nhs.scot/dataset/f23655c3-6e23-4103-a511-a80d998adb90/resource/47557411-7eda-4278-9d6d-d26ed2ceab5a/download/practice_contact_details_20251001_o&quot;) %&gt;% 
   select(practice_code:practice_list_size, hb, data_zone)#keeping only needed columns</code></pre>
 <pre class="r"><code>#importing data from file created for number of diabetic patients by health board
-diabetes_by_healthboard &lt;- read.csv(here(&quot;data&quot;,&quot;diabetes_rates_by_healthboard.csv&quot;)) %&gt;%
-  clean_names() %&gt;% 
-  filter(!is.na(hb_name)) #removing empty columns</code></pre>
+diabetes_by_healthboard &lt;- import_clean_names(
+  here(&quot;data&quot;,&quot;diabetes_rates_by_healthboard.csv&quot;))</code></pre>
 <pre class="r"><code>#Combining health boards which changed codes boundary changes do not matter
 data_cgm &lt;- data_cgm %&gt;% 
   mutate(hbt = recode(hbt, &quot;S08000018&quot; = &quot;S08000029&quot;, &quot;S08000021&quot; = &quot;S08000031&quot;, &quot;S08000023&quot; = &quot;S08000032&quot;, &quot;S08000027&quot; = &quot;S08000030&quot;), 
-         year = as.numeric(year(paid_date_month))) # done to allow joining with population dataset</code></pre>
+         year = as.numeric(year(paid_date_month))) #done to allow joinin</code></pre>
 </div>
 <div id="results" class="section level1" number="4">
 <h1><span class="header-section-number">4</span> Results</h1>
+<pre class="r"><code>summary_function &lt;- function(data, grouping, filtering){data%&gt;% 
+    left_join(hb_names, join_by(hbt == hb)) %&gt;% #add to initial data cleaning
+    group_by(across(grouping)) %&gt;% 
+    filter(!is.na({{filtering}})) %&gt;% 
+    summarise(total_cgm = sum(paid_quantity)) %&gt;%
+    left_join(population_data, join_by(hbt == hb, year == year)) %&gt;% 
+    mutate(total_per_100k = (total_cgm/all_ages)*100000)}</code></pre>
 <div id="cgm-presriptions-over-time-by-healthboard" class="section level2" number="4.1">
 <h2><span class="header-section-number">4.1</span> CGM presriptions over
 time by healthboard</h2>
 <pre class="r"><code>#Adding health board names and population estimates to the CGM dataset and then calculating rate per 100k population
-graph_per_100k &lt;- data_cgm %&gt;% 
-  left_join(hb_names, join_by(hbt == hb)) %&gt;% 
-  group_by(paid_date_month, hb_name, hbt, year) %&gt;% 
-  summarise(total_cgm = sum(paid_quantity)) %&gt;% 
-  left_join(population_data, join_by(hbt == hb, year == year)) %&gt;% 
-  mutate(total_per_100k = (total_cgm/all_ages)*100000) %&gt;% 
-  filter(!is.na(hb_name))</code></pre>
+graph_per_100k &lt;- summary_function(data = data_cgm, grouping = c(&quot;paid_date_month&quot;, &quot;hb_name&quot;, &quot;hbt&quot;, &quot;year&quot;), filtering = hb_name)</code></pre>
 <pre class="r"><code>#creating graph of CGM prescription per 100k by health board overtime
 graph_per_100k %&gt;% 
   ggplot(aes(x = paid_date_month, y = total_per_100k)) +
-  geom_line(na.rm = TRUE) +
+  geom_line() +
   facet_wrap(~hb_name) +
   theme_bw() +
   labs(title = &quot;CGM prescriptions overtime&quot;,
@@ -1684,21 +1675,17 @@ lower rates.</p>
 <h2><span class="header-section-number">4.2</span> Interactive map of
 CGM prescriptions/number of diabetes patients per heathboard in the
 years 2018 and 2023</h2>
-<pre class="r"><code>#Filtering data for CGM map by joing with needed databases and calculating totals
-cgm_map_data &lt;- data_cgm %&gt;% 
+<pre class="r"><code>#Filtering data for CGM map by joining with needed databases and calculating totals
+cgm_map_data &lt;- summary_function(data = data_cgm, grouping = c(&quot;hb_name&quot;,&quot;year&quot;,&quot;hbt&quot;),
+                                 filtering = hb_name) %&gt;%
   filter(year == 2023 | year == 2018) %&gt;% 
-  left_join(hb_names, join_by(hbt == hb)) %&gt;% 
-  group_by(hb_name, year) %&gt;% 
-  summarise(total_cgm = sum(paid_quantity)) %&gt;% 
   left_join(diabetes_by_healthboard, join_by(hb_name, year == year)) %&gt;% 
   mutate(cgm_per_diabetic_patient = (total_cgm/number_diabetic_patients)) %&gt;% 
-  filter(!is.na(hb_name)) %&gt;% 
   left_join(hb_map, join_by(hb_name)) </code></pre>
 <pre class="r"><code>#Making and styling map
 cgm_map &lt;- cgm_map_data %&gt;%
   ggplot(aes(fill = cgm_per_diabetic_patient, geometry = geometry)) +
     geom_sf() +
-  scale_fill_continuous(labels = scales::label_comma()) +
   scale_fill_distiller(palette = 3) +
   theme_void() +
   facet_wrap(~year)
@@ -1711,14 +1698,8 @@ cgm_map</code></pre>
 proportion of people in each age group by board compared to number of
 CGM prescriptions in 2024</h2>
 <pre class="r"><code>#Filtering data for table
-age_table_data &lt;- data_cgm %&gt;% 
-  left_join(hb_names, join_by(hbt == hb)) %&gt;% 
-  group_by(hb_name, hbt, year) %&gt;% 
-  summarise(total_cgm = sum(paid_quantity)) %&gt;% 
-  left_join(population_data, join_by(hbt == hb, year == year)) %&gt;% 
-  mutate(total_per_100k = (total_cgm/all_ages)*100000,
-         across(age_under_16:age_65_plus, ~.x/all_ages)) %&gt;% 
-  filter(!is.na(hb_name))</code></pre>
+age_table_data &lt;- summary_function(data = data_cgm, grouping = c(&quot;hb_name&quot;, &quot;year&quot;, &quot;hbt&quot;), filtering = hb_name) %&gt;% 
+  mutate(across(age_under_16:age_65_plus, ~.x/all_ages))</code></pre>
 <pre class="r"><code>#Creating and styling table
 age_table_data %&gt;% 
   filter(year == 2024) %&gt;% 
@@ -1726,20 +1707,20 @@ age_table_data %&gt;%
   select(hb_name, year, age_under_16:total_per_100k) %&gt;% 
   gt() %&gt;% 
   fmt_percent(columns = age_under_16:age_65_plus, decimals = 2)</code></pre>
-<div id="wwfpwdzntn" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#wwfpwdzntn table {
+<div id="kvqkhszqlz" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#kvqkhszqlz table {
 font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 -webkit-font-smoothing: antialiased;
 -moz-osx-font-smoothing: grayscale;
 }
-#wwfpwdzntn thead, #wwfpwdzntn tbody, #wwfpwdzntn tfoot, #wwfpwdzntn tr, #wwfpwdzntn td, #wwfpwdzntn th {
+#kvqkhszqlz thead, #kvqkhszqlz tbody, #kvqkhszqlz tfoot, #kvqkhszqlz tr, #kvqkhszqlz td, #kvqkhszqlz th {
 border-style: none;
 }
-#wwfpwdzntn p {
+#kvqkhszqlz p {
 margin: 0;
 padding: 0;
 }
-#wwfpwdzntn .gt_table {
+#kvqkhszqlz .gt_table {
 display: table;
 border-collapse: collapse;
 line-height: normal;
@@ -1764,11 +1745,11 @@ border-left-style: none;
 border-left-width: 2px;
 border-left-color: #D3D3D3;
 }
-#wwfpwdzntn .gt_caption {
+#kvqkhszqlz .gt_caption {
 padding-top: 4px;
 padding-bottom: 4px;
 }
-#wwfpwdzntn .gt_title {
+#kvqkhszqlz .gt_title {
 color: #333333;
 font-size: 125%;
 font-weight: initial;
@@ -1779,7 +1760,7 @@ padding-right: 5px;
 border-bottom-color: #FFFFFF;
 border-bottom-width: 0;
 }
-#wwfpwdzntn .gt_subtitle {
+#kvqkhszqlz .gt_subtitle {
 color: #333333;
 font-size: 85%;
 font-weight: initial;
@@ -1790,7 +1771,7 @@ padding-right: 5px;
 border-top-color: #FFFFFF;
 border-top-width: 0;
 }
-#wwfpwdzntn .gt_heading {
+#kvqkhszqlz .gt_heading {
 background-color: #FFFFFF;
 text-align: center;
 border-bottom-color: #FFFFFF;
@@ -1801,12 +1782,12 @@ border-right-style: none;
 border-right-width: 1px;
 border-right-color: #D3D3D3;
 }
-#wwfpwdzntn .gt_bottom_border {
+#kvqkhszqlz .gt_bottom_border {
 border-bottom-style: solid;
 border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
 }
-#wwfpwdzntn .gt_col_headings {
+#kvqkhszqlz .gt_col_headings {
 border-top-style: solid;
 border-top-width: 2px;
 border-top-color: #D3D3D3;
@@ -1820,7 +1801,7 @@ border-right-style: none;
 border-right-width: 1px;
 border-right-color: #D3D3D3;
 }
-#wwfpwdzntn .gt_col_heading {
+#kvqkhszqlz .gt_col_heading {
 color: #333333;
 background-color: #FFFFFF;
 font-size: 100%;
@@ -1839,7 +1820,7 @@ padding-left: 5px;
 padding-right: 5px;
 overflow-x: hidden;
 }
-#wwfpwdzntn .gt_column_spanner_outer {
+#kvqkhszqlz .gt_column_spanner_outer {
 color: #333333;
 background-color: #FFFFFF;
 font-size: 100%;
@@ -1850,13 +1831,13 @@ padding-bottom: 0;
 padding-left: 4px;
 padding-right: 4px;
 }
-#wwfpwdzntn .gt_column_spanner_outer:first-child {
+#kvqkhszqlz .gt_column_spanner_outer:first-child {
 padding-left: 0;
 }
-#wwfpwdzntn .gt_column_spanner_outer:last-child {
+#kvqkhszqlz .gt_column_spanner_outer:last-child {
 padding-right: 0;
 }
-#wwfpwdzntn .gt_column_spanner {
+#kvqkhszqlz .gt_column_spanner {
 border-bottom-style: solid;
 border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
@@ -1867,10 +1848,10 @@ overflow-x: hidden;
 display: inline-block;
 width: 100%;
 }
-#wwfpwdzntn .gt_spanner_row {
+#kvqkhszqlz .gt_spanner_row {
 border-bottom-style: hidden;
 }
-#wwfpwdzntn .gt_group_heading {
+#kvqkhszqlz .gt_group_heading {
 padding-top: 8px;
 padding-bottom: 8px;
 padding-left: 5px;
@@ -1895,7 +1876,7 @@ border-right-color: #D3D3D3;
 vertical-align: middle;
 text-align: left;
 }
-#wwfpwdzntn .gt_empty_group_heading {
+#kvqkhszqlz .gt_empty_group_heading {
 padding: 0.5px;
 color: #333333;
 background-color: #FFFFFF;
@@ -1909,13 +1890,13 @@ border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
 vertical-align: middle;
 }
-#wwfpwdzntn .gt_from_md > :first-child {
+#kvqkhszqlz .gt_from_md > :first-child {
 margin-top: 0;
 }
-#wwfpwdzntn .gt_from_md > :last-child {
+#kvqkhszqlz .gt_from_md > :last-child {
 margin-bottom: 0;
 }
-#wwfpwdzntn .gt_row {
+#kvqkhszqlz .gt_row {
 padding-top: 8px;
 padding-bottom: 8px;
 padding-left: 5px;
@@ -1933,7 +1914,7 @@ border-right-color: #D3D3D3;
 vertical-align: middle;
 overflow-x: hidden;
 }
-#wwfpwdzntn .gt_stub {
+#kvqkhszqlz .gt_stub {
 color: #333333;
 background-color: #FFFFFF;
 font-size: 100%;
@@ -1945,7 +1926,7 @@ border-right-color: #D3D3D3;
 padding-left: 5px;
 padding-right: 5px;
 }
-#wwfpwdzntn .gt_stub_row_group {
+#kvqkhszqlz .gt_stub_row_group {
 color: #333333;
 background-color: #FFFFFF;
 font-size: 100%;
@@ -1958,13 +1939,13 @@ padding-left: 5px;
 padding-right: 5px;
 vertical-align: top;
 }
-#wwfpwdzntn .gt_row_group_first td {
+#kvqkhszqlz .gt_row_group_first td {
 border-top-width: 2px;
 }
-#wwfpwdzntn .gt_row_group_first th {
+#kvqkhszqlz .gt_row_group_first th {
 border-top-width: 2px;
 }
-#wwfpwdzntn .gt_summary_row {
+#kvqkhszqlz .gt_summary_row {
 color: #333333;
 background-color: #FFFFFF;
 text-transform: inherit;
@@ -1973,14 +1954,14 @@ padding-bottom: 8px;
 padding-left: 5px;
 padding-right: 5px;
 }
-#wwfpwdzntn .gt_first_summary_row {
+#kvqkhszqlz .gt_first_summary_row {
 border-top-style: solid;
 border-top-color: #D3D3D3;
 }
-#wwfpwdzntn .gt_first_summary_row.thick {
+#kvqkhszqlz .gt_first_summary_row.thick {
 border-top-width: 2px;
 }
-#wwfpwdzntn .gt_last_summary_row {
+#kvqkhszqlz .gt_last_summary_row {
 padding-top: 8px;
 padding-bottom: 8px;
 padding-left: 5px;
@@ -1989,7 +1970,7 @@ border-bottom-style: solid;
 border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
 }
-#wwfpwdzntn .gt_grand_summary_row {
+#kvqkhszqlz .gt_grand_summary_row {
 color: #333333;
 background-color: #FFFFFF;
 text-transform: inherit;
@@ -1998,7 +1979,7 @@ padding-bottom: 8px;
 padding-left: 5px;
 padding-right: 5px;
 }
-#wwfpwdzntn .gt_first_grand_summary_row {
+#kvqkhszqlz .gt_first_grand_summary_row {
 padding-top: 8px;
 padding-bottom: 8px;
 padding-left: 5px;
@@ -2007,7 +1988,7 @@ border-top-style: double;
 border-top-width: 6px;
 border-top-color: #D3D3D3;
 }
-#wwfpwdzntn .gt_last_grand_summary_row_top {
+#kvqkhszqlz .gt_last_grand_summary_row_top {
 padding-top: 8px;
 padding-bottom: 8px;
 padding-left: 5px;
@@ -2016,10 +1997,10 @@ border-bottom-style: double;
 border-bottom-width: 6px;
 border-bottom-color: #D3D3D3;
 }
-#wwfpwdzntn .gt_striped {
+#kvqkhszqlz .gt_striped {
 background-color: rgba(128, 128, 128, 0.05);
 }
-#wwfpwdzntn .gt_table_body {
+#kvqkhszqlz .gt_table_body {
 border-top-style: solid;
 border-top-width: 2px;
 border-top-color: #D3D3D3;
@@ -2027,7 +2008,7 @@ border-bottom-style: solid;
 border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
 }
-#wwfpwdzntn .gt_footnotes {
+#kvqkhszqlz .gt_footnotes {
 color: #333333;
 background-color: #FFFFFF;
 border-bottom-style: none;
@@ -2040,7 +2021,7 @@ border-right-style: none;
 border-right-width: 2px;
 border-right-color: #D3D3D3;
 }
-#wwfpwdzntn .gt_footnote {
+#kvqkhszqlz .gt_footnote {
 margin: 0px;
 font-size: 90%;
 padding-top: 4px;
@@ -2048,7 +2029,7 @@ padding-bottom: 4px;
 padding-left: 5px;
 padding-right: 5px;
 }
-#wwfpwdzntn .gt_sourcenotes {
+#kvqkhszqlz .gt_sourcenotes {
 color: #333333;
 background-color: #FFFFFF;
 border-bottom-style: none;
@@ -2061,64 +2042,64 @@ border-right-style: none;
 border-right-width: 2px;
 border-right-color: #D3D3D3;
 }
-#wwfpwdzntn .gt_sourcenote {
+#kvqkhszqlz .gt_sourcenote {
 font-size: 90%;
 padding-top: 4px;
 padding-bottom: 4px;
 padding-left: 5px;
 padding-right: 5px;
 }
-#wwfpwdzntn .gt_left {
+#kvqkhszqlz .gt_left {
 text-align: left;
 }
-#wwfpwdzntn .gt_center {
+#kvqkhszqlz .gt_center {
 text-align: center;
 }
-#wwfpwdzntn .gt_right {
+#kvqkhszqlz .gt_right {
 text-align: right;
 font-variant-numeric: tabular-nums;
 }
-#wwfpwdzntn .gt_font_normal {
+#kvqkhszqlz .gt_font_normal {
 font-weight: normal;
 }
-#wwfpwdzntn .gt_font_bold {
+#kvqkhszqlz .gt_font_bold {
 font-weight: bold;
 }
-#wwfpwdzntn .gt_font_italic {
+#kvqkhszqlz .gt_font_italic {
 font-style: italic;
 }
-#wwfpwdzntn .gt_super {
+#kvqkhszqlz .gt_super {
 font-size: 65%;
 }
-#wwfpwdzntn .gt_footnote_marks {
+#kvqkhszqlz .gt_footnote_marks {
 font-size: 75%;
 vertical-align: 0.4em;
 position: initial;
 }
-#wwfpwdzntn .gt_asterisk {
+#kvqkhszqlz .gt_asterisk {
 font-size: 100%;
 vertical-align: 0;
 }
-#wwfpwdzntn .gt_indent_1 {
+#kvqkhszqlz .gt_indent_1 {
 text-indent: 5px;
 }
-#wwfpwdzntn .gt_indent_2 {
+#kvqkhszqlz .gt_indent_2 {
 text-indent: 10px;
 }
-#wwfpwdzntn .gt_indent_3 {
+#kvqkhszqlz .gt_indent_3 {
 text-indent: 15px;
 }
-#wwfpwdzntn .gt_indent_4 {
+#kvqkhszqlz .gt_indent_4 {
 text-indent: 20px;
 }
-#wwfpwdzntn .gt_indent_5 {
+#kvqkhszqlz .gt_indent_5 {
 text-indent: 25px;
 }
-#wwfpwdzntn .katex-display {
+#kvqkhszqlz .katex-display {
 display: inline-flex !important;
 margin-bottom: 0.75em !important;
 }
-#wwfpwdzntn div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#kvqkhszqlz div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
 height: 0px !important;
 }
 </style>
@@ -2281,12 +2262,21 @@ gp_population_by_simd &lt;- gp_practice_data %&gt;%
 simd_graph_data &lt;- data_cgm %&gt;% 
   left_join(gp_practice_data, join_by(gp_practice == practice_code)) %&gt;% 
   left_join(simd_data, join_by(data_zone, hb)) %&gt;% 
-  left_join(hb_names, join_by(hbt == hb)) %&gt;% 
+  left_join(hb_names, join_by(hbt == hb)) %&gt;% # remove
   filter(!is.na(gp_practice_name)) %&gt;% 
   group_by(simd_decile, paid_date_month) %&gt;% 
   summarise(total_cgm = sum(paid_quantity)) %&gt;% 
   left_join(gp_population_by_simd, join_by(simd_decile)) %&gt;% 
-  mutate(total_per_100k = (total_cgm/total_gp_population)*100000)</code></pre>
+  mutate(total_per_100k = (total_cgm/total_gp_population)*100000)
+# 
+# simd_graph_data &lt;- data_cgm %&gt;% 
+#   left_join(gp_practice_data, join_by(gp_practice == practice_code)) %&gt;% 
+#   left_join(simd_data, join_by(data_zone, hb)) %&gt;% 
+#   summary_function(data = ., grouping = c(&quot;simd_decile&quot;, &quot;paid_date_month&quot;, &quot;hbt&quot;, &quot;year&quot;),
+#                    filtering = gp_practice_name) %&gt;% 
+#   left_join(gp_population_by_simd, join_by(simd_decile)) %&gt;% 
+#   mutate(total_per_100k = (total_cgm/total_gp_population)*100000)
+#   </code></pre>
 <pre class="r"><code>#Creating and styling graph
 simd_graph_data %&gt;% 
   mutate(simd_decile = factor(paste(&quot;Decile&quot;, simd_decile), levels = paste(&quot;Decile&quot;, 1:10))) %&gt;% 

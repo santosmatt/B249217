@@ -37,9 +37,6 @@ import_clean_names <- function(file_path){
 
 ```{r import-hb-names}
 #loading all health board names
-hb_names <- read_csv() %>% 
-  clean_names() %>% 
-  
 hb_names <- import_clean_names("https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv") %>% select(hb, hb_name)
 ```
 
@@ -79,7 +76,7 @@ data_cgm <- read_csv(here("data", "data_filtered", "data_cgm.csv"))
 #   list_rbind()
 ```
 
-```{r hb-boundaries}
+```{r hb-boundaries, results = FALSE}
 #importing health boards geographical boundaries 
 hb_map <- st_read(here("data","SG_NHS_HealthBoards_2019","SG_NHS_HealthBoards_2019.shp")) %>% 
   clean_names() %>% 
@@ -115,8 +112,8 @@ data_cgm <- data_cgm %>%
 
 # Results
 ```{r creating-function-summary}
-summary_function <- function(grouping, filtering){data_cgm %>% 
-    left_join(hb_names, join_by(hbt == hb)) %>% #add to intial data cleaning
+summary_function <- function(data, grouping, filtering){data%>% 
+    left_join(hb_names, join_by(hbt == hb)) %>% #add to initial data cleaning
     group_by(across(grouping)) %>% 
     filter(!is.na({{filtering}})) %>% 
     summarise(total_cgm = sum(paid_quantity)) %>%
@@ -128,17 +125,7 @@ summary_function <- function(grouping, filtering){data_cgm %>%
 
 ```{r filtering-data-graph-hb-100k}
 #Adding health board names and population estimates to the CGM dataset and then calculating rate per 100k population
-graph_per_100k <- data_cgm %>% 
-  left_join(hb_names, join_by(hbt == hb)) %>% #add to intial data cleaning
-  group_by(paid_date_month, hb_name, hbt, year) %>% 
-  summarise(total_cgm = sum(paid_quantity)) %>% 
-  left_join(population_data, join_by(hbt == hb, year == year)) %>% 
-  mutate(total_per_100k = (total_cgm/all_ages)*100000) %>% 
-  filter(!is.na(hb_name))
-
-graph_per_100k <- summary_function(
-  grouping = c("paid_date_month", "hb_name", "hbt", "year"), 
-  filtering = hb_name)
+graph_per_100k <- summary_function(data = data_cgm, grouping = c("paid_date_month", "hb_name", "hbt", "year"), filtering = hb_name)
 ```
 
 ```{r graph-hb-100k}
@@ -160,15 +147,13 @@ The graph depicts all health boards increasing prescriptions in CGMs steadily ov
 ## Interactive map of CGM prescriptions/number of diabetes patients per heathboard in the years 2018 and 2023
 ```{r filtering-data-map}
 #Filtering data for CGM map by joining with needed databases and calculating totals
-cgm_map_data <- data_cgm %>% 
+cgm_map_data <- summary_function(data = data_cgm, grouping = c("hb_name","year","hbt"),
+                                 filtering = hb_name) %>%
   filter(year == 2023 | year == 2018) %>% 
-  left_join(hb_names, join_by(hbt == hb)) %>% 
-  group_by(hb_name, year) %>% 
-  summarise(total_cgm = sum(paid_quantity)) %>% 
   left_join(diabetes_by_healthboard, join_by(hb_name, year == year)) %>% 
   mutate(cgm_per_diabetic_patient = (total_cgm/number_diabetic_patients)) %>% 
-  filter(!is.na(hb_name)) %>% 
   left_join(hb_map, join_by(hb_name)) 
+  
 ```
 
 ```{r making-map}
@@ -176,7 +161,6 @@ cgm_map_data <- data_cgm %>%
 cgm_map <- cgm_map_data %>%
   ggplot(aes(fill = cgm_per_diabetic_patient, geometry = geometry)) +
     geom_sf() +
-  scale_fill_continuous(labels = scales::label_comma()) +
   scale_fill_distiller(palette = 3) +
   theme_void() +
   facet_wrap(~year)
@@ -188,15 +172,8 @@ cgm_map
 
 ```{r table-filtering}
 #Filtering data for table
-age_table_data <- data_cgm %>% 
-  left_join(hb_names, join_by(hbt == hb)) %>% 
-  group_by(hb_name, hbt, year) %>% 
-  summarise(total_cgm = sum(paid_quantity)) %>% 
-  left_join(population_data, join_by(hbt == hb, year == year)) %>% 
-  mutate(total_per_100k = (total_cgm/all_ages)*100000,
-         across(age_under_16:age_65_plus, ~.x/all_ages)) %>% 
-  filter(!is.na(hb_name))
-
+age_table_data <- summary_function(data = data_cgm, grouping = c("hb_name", "year", "hbt"), filtering = hb_name) %>% 
+  mutate(across(age_under_16:age_65_plus, ~.x/all_ages))
 
 ```
 
@@ -208,7 +185,6 @@ age_table_data %>%
   select(hb_name, year, age_under_16:total_per_100k) %>% 
   gt() %>% 
   fmt_percent(columns = age_under_16:age_65_plus, decimals = 2)
-
 ```
 
 ## CGM prescriptions by GP practise SIMD
@@ -229,6 +205,15 @@ simd_graph_data <- data_cgm %>%
   summarise(total_cgm = sum(paid_quantity)) %>% 
   left_join(gp_population_by_simd, join_by(simd_decile)) %>% 
   mutate(total_per_100k = (total_cgm/total_gp_population)*100000)
+# 
+# simd_graph_data <- data_cgm %>% 
+#   left_join(gp_practice_data, join_by(gp_practice == practice_code)) %>% 
+#   left_join(simd_data, join_by(data_zone, hb)) %>% 
+#   summary_function(data = ., grouping = c("simd_decile", "paid_date_month", "hbt", "year"),
+#                    filtering = gp_practice_name) %>% 
+#   left_join(gp_population_by_simd, join_by(simd_decile)) %>% 
+#   mutate(total_per_100k = (total_cgm/total_gp_population)*100000)
+#   
 ```
 
 ```{r graph-creation-simd}
