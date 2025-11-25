@@ -28,17 +28,24 @@ library(here)
 library(sf) #draw geographical map
 ```
 
+```{r function-import-clean-names}
+#creating function to import data then clean names
+import_clean_names <- function(file_path){
+  read_csv(file_path)%>% 
+    clean_names()}
+```
+
 ```{r import-hb-names}
 #loading all health board names
-hb_names <- read_csv("https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv") %>% 
+hb_names <- read_csv() %>% 
   clean_names() %>% 
-  select(hb, hb_name)
+  
+hb_names <- import_clean_names("https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv") %>% select(hb, hb_name)
 ```
 
 ```{r hb-population-estimates}
 #importing health board population estimate data
-population_data_raw <- read_csv("https://www.opendata.nhs.scot/dataset/7f010430-6ce1-4813-b25c-f7f335bdc4dc/resource/27a72cc8-d6d8-430c-8b4f-3109a9ceadb1/download/hb2019_pop_est_03102025.csv") %>% 
-  clean_names() 
+population_data_raw <- import_clean_names("https://www.opendata.nhs.scot/dataset/7f010430-6ce1-4813-b25c-f7f335bdc4dc/resource/27a72cc8-d6d8-430c-8b4f-3109a9ceadb1/download/hb2019_pop_est_03102025.csv")
 ```
 
 ```{r}
@@ -82,52 +89,63 @@ hb_map <- st_read(here("data","SG_NHS_HealthBoards_2019","SG_NHS_HealthBoards_20
 
 ```{r simd-import}
 #Importing SIMD data
-simd_data <- read.csv("https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/acade396-8430-4b34-895a-b3e757fa346e/download/simd2020v2_22062020.csv") %>% 
-  clean_names() %>% 
+simd_data <- import_clean_names("https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/acade396-8430-4b34-895a-b3e757fa346e/download/simd2020v2_22062020.csv") %>% 
   rename(simd_decile = simd2020v2country_decile) %>% #changing name for easier coding
   select(data_zone, hb, simd_decile) #only keeping needed columns
 ```
 
 ```{r gp-practice-data}
 #importing data about gp practice names, locations and populations
-gp_practice_data <- read.csv("https://www.opendata.nhs.scot/dataset/f23655c3-6e23-4103-a511-a80d998adb90/resource/47557411-7eda-4278-9d6d-d26ed2ceab5a/download/practice_contact_details_20251001_o") %>% 
-  clean_names() %>% 
+gp_practice_data <- import_clean_names("https://www.opendata.nhs.scot/dataset/f23655c3-6e23-4103-a511-a80d998adb90/resource/47557411-7eda-4278-9d6d-d26ed2ceab5a/download/practice_contact_details_20251001_o") %>% 
   select(practice_code:practice_list_size, hb, data_zone)#keeping only needed columns
 ```
 
 ```{r diabetes-healthboard-numbers, results = FALSE}
 #importing data from file created for number of diabetic patients by health board
-diabetes_by_healthboard <- read.csv(here("data","diabetes_rates_by_healthboard.csv")) %>%
-  clean_names() %>% 
-  filter(!is.na(hb_name)) #removing empty columns
+diabetes_by_healthboard <- import_clean_names(
+  here("data","diabetes_rates_by_healthboard.csv"))
 ```
 
 ```{r tidying-CGM-data}
 #Combining health boards which changed codes boundary changes do not matter
 data_cgm <- data_cgm %>% 
   mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"), 
-         year = as.numeric(year(paid_date_month))) # done to allow joining with population dataset
+         year = as.numeric(year(paid_date_month))) #done to allow joinin
 ```
 
 # Results
+```{r creating-function-summary}
+summary_function <- function(grouping, filtering){data_cgm %>% 
+    left_join(hb_names, join_by(hbt == hb)) %>% #add to intial data cleaning
+    group_by(across(grouping)) %>% 
+    filter(!is.na({{filtering}})) %>% 
+    summarise(total_cgm = sum(paid_quantity)) %>%
+    left_join(population_data, join_by(hbt == hb, year == year)) %>% 
+    mutate(total_per_100k = (total_cgm/all_ages)*100000)}
+```
+
 ## CGM presriptions over time by healthboard
 
 ```{r filtering-data-graph-hb-100k}
 #Adding health board names and population estimates to the CGM dataset and then calculating rate per 100k population
 graph_per_100k <- data_cgm %>% 
-  left_join(hb_names, join_by(hbt == hb)) %>% 
+  left_join(hb_names, join_by(hbt == hb)) %>% #add to intial data cleaning
   group_by(paid_date_month, hb_name, hbt, year) %>% 
   summarise(total_cgm = sum(paid_quantity)) %>% 
   left_join(population_data, join_by(hbt == hb, year == year)) %>% 
   mutate(total_per_100k = (total_cgm/all_ages)*100000) %>% 
   filter(!is.na(hb_name))
+
+graph_per_100k <- summary_function(
+  grouping = c("paid_date_month", "hb_name", "hbt", "year"), 
+  filtering = hb_name)
 ```
 
 ```{r graph-hb-100k}
 #creating graph of CGM prescription per 100k by health board overtime
 graph_per_100k %>% 
   ggplot(aes(x = paid_date_month, y = total_per_100k)) +
-  geom_line(na.rm = TRUE) +
+  geom_line() +
   facet_wrap(~hb_name) +
   theme_bw() +
   labs(title = "CGM prescriptions overtime",
@@ -141,7 +159,7 @@ The graph depicts all health boards increasing prescriptions in CGMs steadily ov
 
 ## Interactive map of CGM prescriptions/number of diabetes patients per heathboard in the years 2018 and 2023
 ```{r filtering-data-map}
-#Filtering data for CGM map by joing with needed databases and calculating totals
+#Filtering data for CGM map by joining with needed databases and calculating totals
 cgm_map_data <- data_cgm %>% 
   filter(year == 2023 | year == 2018) %>% 
   left_join(hb_names, join_by(hbt == hb)) %>% 
@@ -178,6 +196,8 @@ age_table_data <- data_cgm %>%
   mutate(total_per_100k = (total_cgm/all_ages)*100000,
          across(age_under_16:age_65_plus, ~.x/all_ages)) %>% 
   filter(!is.na(hb_name))
+
+
 ```
 
 ```{r table-creation}
@@ -203,7 +223,7 @@ gp_population_by_simd <- gp_practice_data %>%
 simd_graph_data <- data_cgm %>% 
   left_join(gp_practice_data, join_by(gp_practice == practice_code)) %>% 
   left_join(simd_data, join_by(data_zone, hb)) %>% 
-  left_join(hb_names, join_by(hbt == hb)) %>% 
+  left_join(hb_names, join_by(hbt == hb)) %>% # remove
   filter(!is.na(gp_practice_name)) %>% 
   group_by(simd_decile, paid_date_month) %>% 
   summarise(total_cgm = sum(paid_quantity)) %>% 
