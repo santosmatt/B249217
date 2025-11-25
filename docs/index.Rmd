@@ -28,63 +28,82 @@ library(here)
 library(sf) #draw geographical map
 ```
 
-```{r data_import, results = FALSE}
-#loading all healthboard names
+```{r import-hb-names}
+#loading all health board names
 hb_names <- read_csv("https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv") %>% 
   clean_names() %>% 
   select(hb, hb_name)
+```
 
+```{r hb-population-estimates}
 #importing health board population estimate data
 population_data_raw <- read_csv("https://www.opendata.nhs.scot/dataset/7f010430-6ce1-4813-b25c-f7f335bdc4dc/resource/27a72cc8-d6d8-430c-8b4f-3109a9ceadb1/download/hb2019_pop_est_03102025.csv") %>% 
   clean_names() 
+```
 
+```{r}
+#tidying health board population data and splitting ages into distinct groups
 population_data <- population_data_raw %>% 
-  filter(sex == "All", year >= 2017, hb != "S92000003") %>% 
-  mutate(age_under_16 = rowSums(.[,7:22]),
+  filter(sex == "All", year >= 2017, hb != "S92000003") %>% #removing uneeded data
+  mutate(age_under_16 = rowSums(.[,7:22]), # splitting ages into groups
          age_16_to_24 = rowSums(.[,23:31]),
          age_25_to_34 = rowSums(.[,32:41]),
          age_35_to_54 = rowSums(.[,42:61]),
          age_55_to_64 = rowSums(.[,62:71]),
          age_65_plus = rowSums(.[,72:97])) %>%
   select(year, hb, sex, all_ages, age_under_16:age_65_plus) # keeping only needed columns
+```
+# REMOVE
 
+```{r cgm_data}
 #reading csv for CGM that has been made
 data_cgm <- read_csv(here("data", "data_filtered", "data_cgm.csv"))
+```
 
-#loading all prescription data from 10/2017 to 2025
+```{r import-all-prescription-data}
+#Creating path for map function to import all health board data
 # links <- read.csv(here("data", "file_links.csv")) %>%
 #   select(link) %>%
 #   pull()
-# 
+#
+#Loading all prescription data from 10/2017 to 2025 when CGMs were presribed
 # raw_prescription_data <- links %>%
 #   map(read_csv) %>%
 #   list_rbind()
+```
 
+```{r hb-boundaries}
 #importing health boards geographical boundaries 
 hb_map <- st_read(here("data","SG_NHS_HealthBoards_2019","SG_NHS_HealthBoards_2019.shp")) %>% 
   clean_names() %>% 
-  mutate(hb_name = paste("NHS", hb_name))
-
-#SIMD data import
-simd_data <- read.csv("https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/acade396-8430-4b34-895a-b3e757fa346e/download/simd2020v2_22062020.csv") %>% 
-  clean_names() %>% 
-  rename(simd_decile = simd2020v2country_decile) %>% 
-  select(data_zone, hb, simd_decile)
-
-#importing data about gp practises
-gp_practice_data <- read.csv("https://www.opendata.nhs.scot/dataset/f23655c3-6e23-4103-a511-a80d998adb90/resource/47557411-7eda-4278-9d6d-d26ed2ceab5a/download/practice_contact_details_20251001_o") %>% 
-  clean_names() %>% 
-  select(practice_code, gp_practice_name, hb, data_zone, practice_list_size)
-
-diabetes_by_healthboard <- read.csv(here("data","diabetes_rates_by_healthboard.csv")) %>%
-  clean_names() %>% 
-  filter(!is.na(hb_name)) 
-
+  mutate(hb_name = paste("NHS", hb_name)) #chaning names to have NHS infront 
 ```
 
-```{r tidying_data}
-#Combining health boards which changed codes boundary changes do not matter
 
+```{r simd-import}
+#Importing SIMD data
+simd_data <- read.csv("https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/acade396-8430-4b34-895a-b3e757fa346e/download/simd2020v2_22062020.csv") %>% 
+  clean_names() %>% 
+  rename(simd_decile = simd2020v2country_decile) %>% #changing name for easier coding
+  select(data_zone, hb, simd_decile) #only keeping needed columns
+```
+
+```{r gp-practice-data}
+#importing data about gp practice names, locations and populations
+gp_practice_data <- read.csv("https://www.opendata.nhs.scot/dataset/f23655c3-6e23-4103-a511-a80d998adb90/resource/47557411-7eda-4278-9d6d-d26ed2ceab5a/download/practice_contact_details_20251001_o") %>% 
+  clean_names() %>% 
+  select(practice_code:practice_list_size, hb, data_zone)#keeping only needed columns
+```
+
+```{r diabetes-healthboard-numbers, results = FALSE}
+#importing data from file created for number of diabetic patients by health board
+diabetes_by_healthboard <- read.csv(here("data","diabetes_rates_by_healthboard.csv")) %>%
+  clean_names() %>% 
+  filter(!is.na(hb_name)) #removing empty columns
+```
+
+```{r tidying-CGM-data}
+#Combining health boards which changed codes boundary changes do not matter
 data_cgm <- data_cgm %>% 
   mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"), 
          year = as.numeric(year(paid_date_month))) # done to allow joining with population dataset
@@ -93,7 +112,7 @@ data_cgm <- data_cgm %>%
 # Results
 ## CGM presriptions over time by healthboard
 
-```{r filtering_data}
+```{r filtering-data-graph-hb-100k}
 #Adding health board names and population estimates to the CGM dataset and then calculating rate per 100k population
 graph_per_100k <- data_cgm %>% 
   left_join(hb_names, join_by(hbt == hb)) %>% 
@@ -104,9 +123,8 @@ graph_per_100k <- data_cgm %>%
   filter(!is.na(hb_name))
 ```
 
-```{r graph_hb_100k}
+```{r graph-hb-100k}
 #creating graph of CGM prescription per 100k by health board overtime
-
 graph_per_100k %>% 
   ggplot(aes(x = paid_date_month, y = total_per_100k)) +
   geom_line(na.rm = TRUE) +
@@ -117,13 +135,13 @@ graph_per_100k %>%
        x = "Year",
        y = "CGM Prescriptions (per 100k)") +
   theme(strip.text = element_text(size = 7))
-
 ```
 
 The graph depicts all health boards increasing prescriptions in CGMs steadily overtime from November 2017 to August 2025. But there are geographic differences in the rate and total number of prescription between healthboards. NHS Dumfries and Galloway, Shetland and Western Isles prescribing more per 100,000 population in 2025 than any other health boards, and NHS Ayrshire and Arran, Tayside and Orkney having lower rates. 
 
 ## Interactive map of CGM prescriptions/number of diabetes patients per heathboard in the years 2018 and 2023
-```{r filtering_data_map}
+```{r filtering-data-map}
+#Filtering data for CGM map by joing with needed databases and calculating totals
 cgm_map_data <- data_cgm %>% 
   filter(year == 2023 | year == 2018) %>% 
   left_join(hb_names, join_by(hbt == hb)) %>% 
@@ -133,10 +151,10 @@ cgm_map_data <- data_cgm %>%
   mutate(cgm_per_diabetic_patient = (total_cgm/number_diabetic_patients)) %>% 
   filter(!is.na(hb_name)) %>% 
   left_join(hb_map, join_by(hb_name)) 
-
 ```
 
-```{r making_map}
+```{r making-map}
+#Making and styling map
 cgm_map <- cgm_map_data %>%
   ggplot(aes(fill = cgm_per_diabetic_patient, geometry = geometry)) +
     geom_sf() +
@@ -148,8 +166,10 @@ cgm_map <- cgm_map_data %>%
 cgm_map
 ```
 
-## Table showing the proportion of people in each age group by board compared to number of CGM prescriptions in 2024
-```{r table}
+## Table showing the proportion of people in each age group by board compared to number of CGM prescriptions in 2024#
+
+```{r table-filtering}
+#Filtering data for table
 age_table_data <- data_cgm %>% 
   left_join(hb_names, join_by(hbt == hb)) %>% 
   group_by(hb_name, hbt, year) %>% 
@@ -158,7 +178,10 @@ age_table_data <- data_cgm %>%
   mutate(total_per_100k = (total_cgm/all_ages)*100000,
          across(age_under_16:age_65_plus, ~.x/all_ages)) %>% 
   filter(!is.na(hb_name))
+```
 
+```{r table-creation}
+#Creating and styling table
 age_table_data %>% 
   filter(year == 2024) %>% 
   ungroup() %>% 
@@ -169,13 +192,14 @@ age_table_data %>%
 ```
 
 ## CGM prescriptions by GP practise SIMD
-```{r graph_simd}
-
+```{r filtering-data-graph-cgm-by-simd}
+#Combining GP data with SIMD and finding total number of patients per GP by SIMD
 gp_population_by_simd <- gp_practice_data %>% 
   left_join(simd_data, join_by(data_zone)) %>% 
   group_by(simd_decile) %>% 
   summarise(total_gp_population = sum(practice_list_size))
 
+#Combing patients per SIMD into CGM data and changing for graph
 simd_graph_data <- data_cgm %>% 
   left_join(gp_practice_data, join_by(gp_practice == practice_code)) %>% 
   left_join(simd_data, join_by(data_zone, hb)) %>% 
@@ -185,7 +209,10 @@ simd_graph_data <- data_cgm %>%
   summarise(total_cgm = sum(paid_quantity)) %>% 
   left_join(gp_population_by_simd, join_by(simd_decile)) %>% 
   mutate(total_per_100k = (total_cgm/total_gp_population)*100000)
+```
 
+```{r graph-creation-simd}
+#Creating and styling graph
 simd_graph_data %>% 
   mutate(simd_decile = factor(paste("Decile", simd_decile), levels = paste("Decile", 1:10))) %>% 
   ggplot(aes(x = paid_date_month, y = total_per_100k)) +
