@@ -8,7 +8,6 @@ output:
     number_sections: true
     code_folding: show 
 date: "2025-10-31"
-runtime: shiny
 ---
 # Introduction
 ## Topic of focus
@@ -22,7 +21,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
 
-```{r}
+```{r packages}
 #importing required packages
 library(tidyverse)
 library(janitor)
@@ -32,7 +31,7 @@ library(shiny) #adds drop down menu to change year on map
 library(sf) #draw geographical map
 ```
 
-```{r}
+```{r theme_plots}
 #custom theme for plots
 theme_custom <- theme(
 text = element_text(size = 12),
@@ -46,7 +45,7 @@ legend.title = element_blank())
 theme_set(theme_minimal() + theme_custom)
 ```
 
-```{r}
+```{r data_import, echo = FALSE}
 #loading all healthboard names
 hb_names <- read_csv("https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv") %>% 
   clean_names() %>% 
@@ -62,22 +61,34 @@ population_data <- read_csv("https://www.opendata.nhs.scot/dataset/7f010430-6ce1
 data_cgm <- read_csv(here("data", "data_filtered", "data_cgm.csv"))
 
 #loading all prescription data from 10/2017 to 2025
-#links <- read.csv(here("data", "file_links.csv")) %>% 
-  #select(link) %>% 
-  #pull()
-
-#raw_prescription_data <- links %>% 
-  #map(read_csv) %>% 
-  #list_rbind()
+# links <- read.csv(here("data", "file_links.csv")) %>%
+#   select(link) %>%
+#   pull()
+# 
+# raw_prescription_data <- links %>%
+#   map(read_csv) %>%
+#   list_rbind()
 
 #importing health boards geographical boundaries 
 hb_map <- st_read(here("data","SG_NHS_HealthBoards_2019","SG_NHS_HealthBoards_2019.shp")) %>% 
   clean_names() %>% 
   mutate(hb_name = paste("NHS", hb_name))
 
+#SIMD data import
+simd_data <- read.csv("https://www.opendata.nhs.scot/dataset/78d41fa9-1a62-4f7b-9edb-3e8522a93378/resource/acade396-8430-4b34-895a-b3e757fa346e/download/simd2020v2_22062020.csv") %>% 
+  clean_names() %>% 
+  rename(simd_decile = simd2020v2country_decile) %>% 
+  select(data_zone, hb, simd_decile)
+
+#importing data about gp practises
+gp_practice_data <- read.csv("https://www.opendata.nhs.scot/dataset/f23655c3-6e23-4103-a511-a80d998adb90/resource/47557411-7eda-4278-9d6d-d26ed2ceab5a/download/practice_contact_details_20251001_o") %>% 
+  clean_names() %>% 
+  select(practice_code, gp_practice_name, hb, data_zone, practice_list_size)
+
+
 ```
 
-```{r}
+```{r tidying_data}
 #Combining health boards which changed codes boundary changes do not matter
 
 data_cgm <- data_cgm %>% 
@@ -88,18 +99,18 @@ data_cgm <- data_cgm %>%
 # Results
 ## CGM presriptions over time by healthboard
 
-```{r}
+```{r filtering_data}
 #Adding health board names and population estimates to the CGM dataset and then calculating rate per 100k population
 graph_per_100k <- data_cgm %>% 
   left_join(hb_names, join_by(hbt == hb)) %>% 
   left_join(population_data, join_by(hbt == hb, year == year)) %>% 
   group_by(paid_date_month, hb_name, all_ages) %>% 
   summarise(total = sum(paid_quantity),
-            total_per_100k = unique((total/all_ages)*100000)) %>% 
+            total_per_100k = (total/all_ages)*100000) %>% 
   filter(!is.na(hb_name))
 ```
 
-```{r}
+```{r graph_hb_100k}
 #creating graph of CGM prescription per 100k by health board overtime
 
 graph_per_100k %>% 
@@ -118,47 +129,57 @@ graph_per_100k %>%
 The graph depicts all health boards increasing prescriptions in CGMs steadily overtime from November 2017 to August 2025. But there are geographic differences in the rate and total number of prescription between healthboards. NHS Dumfries and Galloway, Shetland and Western Isles prescribing more per 100,000 population in 2025 than any other health boards, and NHS Ayrshire and Arran, Tayside and Orkney having lower rates. 
 
 ## Interactive map of CGM prescriptions/number of diabetes patients per heathboard in the years 2018 and 2023
-```{r}
+```{r filtering_data_map}
 cgm_map <- data_cgm %>% 
   left_join(hb_names, join_by(hbt == hb)) %>% 
   left_join(population_data, join_by(hbt == hb, year == year)) %>% 
   group_by(year, hb_name, all_ages)%>% 
   summarise(total = sum(paid_quantity),
-            total_per_100k = unique((total/all_ages)*100000)) %>% 
+            total_per_100k = (total/all_ages)*100000) %>% 
   filter(!is.na(hb_name)) %>% 
   left_join(hb_map, join_by(hb_name)) 
 ```
 
-```{r}
-selectInput("n_breaks", label = "Year",
-              choices = c(2018,2023), selected = 2023)
-
-```
-test
-```{r}
-renderPlot({
-  cgm_map %>% 
-  filter(year == input$n_breaks) %>% 
-  ggplot(aes(fill = total_per_100k, geometry = geometry)) +
-    geom_sf() +
-  scale_fill_continuous(labels = scales::label_comma()) +
-  scale_fill_distiller(palette = 3) +
-  theme_void()
-})
-
-
-
-
+```{r making_map}
+# cgm_map %>% 
+#   filter(year == 2023 | year == 2018) %>% 
+#   ggplot(aes(fill = total_per_100k, geometry = geometry)) +
+#     geom_sf() +
+#   scale_fill_continuous(labels = scales::label_comma()) +
+#   scale_fill_distiller(palette = 3) +
+#   theme_void() +
+#   facet_wrap(~year)
 ```
 
 ## Table showing the proportion of people in each age group by board compared to number of CGM prescriptions
-```{r}
+```{r - table}
 
 ```
 
 ## CGM prescriptions by GP practise SIMD
-```{r}
+```{r graph_simd}
+simd_graph_data <- data_cgm %>% 
+  left_join(gp_practice_data, join_by(gp_practice == practice_code)) %>% 
+  left_join(simd_data, join_by(data_zone, hb)) %>% 
+  left_join(hb_names, join_by(hbt == hb)) %>% 
+  left_join(population_data, join_by(hbt == hb, year == year)) %>%
+  filter(!is.na(gp_practice_name)) %>% 
+  group_by(simd_decile, paid_date_month) %>% 
+  summarise(total_cgm = sum(paid_quantity),
+            total_population_gp = sum(practice_list_size),
+            total_per_100k = (total_cgm/total_population_gp)*100000)
 
+simd_graph_data %>% 
+  mutate(simd_decile = paste("Decile", simd_decile)) %>% 
+  ggplot(aes(x = paid_date_month, y = total_per_100k)) +
+  geom_line(na.rm = TRUE) +
+  facet_wrap(~simd_decile, nrow = 5) +
+  theme_bw() +
+  labs(title = "CGM prescriptions overtime",
+       subtitle = "By SIMD in Scotland",
+       x = "Year",
+       y = "CGM Prescriptions (per 100k)") +
+  theme(strip.text = element_text(size = 7))
 ```
 
 ## Future Plans
