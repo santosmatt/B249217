@@ -30,20 +30,6 @@ library(here)
 library(sf) #draw geographical map
 ```
 
-```{r theme_plots,results=FALSE}
-#custom theme for plots
-theme_custom <- theme(
-text = element_text(size = 12),
-panel.grid = element_blank(),
-panel.grid.major.y = element_line(colour = "#e3e1e1",
-linetype = 2),
-plot.title.position = 'plot',
-legend.position = 'top',
-legend.title = element_blank())
-
-theme_set(theme_minimal() + theme_custom)
-```
-
 ```{r data_import, results = FALSE}
 #loading all healthboard names
 hb_names <- read_csv("https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv") %>% 
@@ -92,6 +78,9 @@ gp_practice_data <- read.csv("https://www.opendata.nhs.scot/dataset/f23655c3-6e2
   clean_names() %>% 
   select(practice_code, gp_practice_name, hb, data_zone, practice_list_size)
 
+diabetes_by_healthboard <- read.csv(here("data","diabetes_rates_by_healthboard.csv")) %>%
+  clean_names() %>% 
+  filter(!is.na(hb_name)) 
 
 ```
 
@@ -138,20 +127,20 @@ The graph depicts all health boards increasing prescriptions in CGMs steadily ov
 ## Interactive map of CGM prescriptions/number of diabetes patients per heathboard in the years 2018 and 2023
 ```{r filtering_data_map}
 cgm_map_data <- data_cgm %>% 
+  filter(year == 2023 | year == 2018) %>% 
   left_join(hb_names, join_by(hbt == hb)) %>% 
-  group_by(hb_name, hbt, year) %>% 
+  group_by(hb_name, year) %>% 
   summarise(total_cgm = sum(paid_quantity)) %>% 
-  left_join(population_data, join_by(hbt == hb, year == year)) %>% 
-  mutate(total_per_100k = (total_cgm/all_ages)*100000) %>% 
+  left_join(diabetes_by_healthboard, join_by(hb_name, year == year)) %>% 
+  mutate(cgm_per_diabetic_patient = (total_cgm/number_diabetic_patients)) %>% 
   filter(!is.na(hb_name)) %>% 
-  left_join(hb_map, join_by(hb_name))
+  left_join(hb_map, join_by(hb_name)) 
 
 ```
 
 ```{r making_map}
 cgm_map <- cgm_map_data %>%
-  filter(year == 2023 | year == 2018) %>%
-  ggplot(aes(fill = total_per_100k, geometry = geometry)) +
+  ggplot(aes(fill = cgm_per_diabetic_patient, geometry = geometry)) +
     geom_sf() +
   scale_fill_continuous(labels = scales::label_comma()) +
   scale_fill_distiller(palette = 3) +
@@ -209,7 +198,6 @@ simd_graph_data %>%
        subtitle = "By SIMD in Scotland",
        x = "Year",
        y = "CGM Prescriptions (per 100k)")
-
 
 ```
 
