@@ -178,33 +178,39 @@ age_table_data %>%
   select(hb_name, year, age_under_16:total_per_100k) %>% 
   gt() %>% 
   fmt_percent(columns = age_under_16:age_65_plus, decimals = 2)
-  
+
 ```
 
 ## CGM prescriptions by GP practise SIMD
 ```{r graph_simd}
+
+gp_population_by_simd <- gp_practice_data %>% 
+  left_join(simd_data, join_by(data_zone)) %>% 
+  group_by(simd_decile) %>% 
+  summarise(total_gp_population = sum(practice_list_size))
+
 simd_graph_data <- data_cgm %>% 
   left_join(gp_practice_data, join_by(gp_practice == practice_code)) %>% 
   left_join(simd_data, join_by(data_zone, hb)) %>% 
   left_join(hb_names, join_by(hbt == hb)) %>% 
-  left_join(population_data, join_by(hbt == hb, year == year)) %>%
   filter(!is.na(gp_practice_name)) %>% 
   group_by(simd_decile, paid_date_month) %>% 
-  summarise(total_cgm = sum(paid_quantity),
-            total_population_gp = sum(practice_list_size),
-            total_per_100k = (total_cgm/total_population_gp)*100000)
+  summarise(total_cgm = sum(paid_quantity)) %>% 
+  left_join(gp_population_by_simd, join_by(simd_decile)) %>% 
+  mutate(total_per_100k = (total_cgm/total_gp_population)*100000)
 
 simd_graph_data %>% 
   mutate(simd_decile = factor(paste("Decile", simd_decile), levels = paste("Decile", 1:10))) %>% 
   ggplot(aes(x = paid_date_month, y = total_per_100k)) +
-  geom_line(na.rm = TRUE) +
+  geom_line() +
   facet_wrap(~simd_decile) +
   theme_bw() +
   labs(title = "CGM prescriptions overtime",
        subtitle = "By SIMD in Scotland",
        x = "Year",
-       y = "CGM Prescriptions (per 100k)") +
-  theme(strip.text = element_text(size = 7))
+       y = "CGM Prescriptions (per 100k)")
+
+
 ```
 
 ## Future Plans
