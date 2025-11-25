@@ -10,9 +10,7 @@ output:
 date: "2025-10-31"
 ---
 # Introduction
-## Topic of focus
 
-How does the prescription of continuous glucose monitoring(CGM) devices vary over time and between regions in Scotland - looking specifically at how it varies based on different demographic data?
 
 # Methods
 
@@ -201,8 +199,6 @@ simd_graph_data %>%
 
 ```
 
-## Future Plans
-I plan to investigate the data in more detail in regards to demographics. Looking into differences in prescription of CGMs between practices based on SIMD classification and age groups within area. I will also try and obtain public information on diabetes prevalence and try and come this to the data to see if areas with more CGM prescriptions have higher diabetes rates.
 
 # Limitations
 
