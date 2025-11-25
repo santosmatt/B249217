@@ -26,6 +26,7 @@ library(janitor)
 library(gt)
 library(here)
 library(sf) #draw geographical map
+library(ggiraph) #interactive maps
 ```
 
 ```{r function-import-clean-names}
@@ -160,15 +161,18 @@ cgm_map_data <- summary_function(data = data_cgm, grouping = c("hb_name","year",
 #Making and styling map
 cgm_map <- cgm_map_data %>%
   ggplot(aes(fill = cgm_per_diabetic_patient, geometry = geometry)) +
-    geom_sf() +
+  geom_sf_interactive(
+    aes(data_id = hb_name, 
+        tooltip = paste(hb_name, "\n", "CGM prescriptions per diabetic patient", round(cgm_per_diabetic_patient, 2)))) +
   scale_fill_distiller(palette = 3) +
   theme_void() +
-  facet_wrap(~year)
+  facet_grid(~year) +
+  coord_sf()
 
-cgm_map
+girafe(ggobj = cgm_map)
 ```
 
-## Table showing the proportion of people in each age group by board compared to number of CGM prescriptions in 2024#
+## Table showing the proportion of people in each age group by board compared to number of CGM prescriptions in 2024
 
 ```{r table-filtering}
 #Filtering data for table
