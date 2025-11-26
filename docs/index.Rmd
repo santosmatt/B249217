@@ -93,7 +93,7 @@ gp_practice_data <- import_clean_names("https://www.opendata.nhs.scot/dataset/f2
 ```{r diabetes-healthboard-numbers, results = FALSE}
 #importing data from file created for number of diabetic patients by health board
 diabetes_by_healthboard <- import_clean_names(
-  here("data","diabetes_rates_by_healthboard.csv"))
+  here("docs","diabetes_rates_by_healthboard.csv"))
 ```
 
 ```{r import-all-prescription-data}
@@ -196,9 +196,9 @@ cgm_map_2018_and_2023 <- cgm_map_data_2018_and_2023 %>%
   scale_fill_distiller(palette = 3) +
   theme_void() +
   facet_grid(~year) +
-  labs(title = "Interactive map showing prescription of CGMs \n per diabetic patient by Scottish health boards",
+  labs(title = "Interactive map showing prescription of CGMs \n per patient with diabetes mellitus by Scottish health boards",
        subtitle = "In the years 2018 and 2023",
-       fill = "Number of CGMs \n prescribed per diabetic \n patient per year")
+       fill = "Number of CGMs \n prescribed per patient with \n diabetes mellitus per year")
 
 girafe(ggobj = cgm_map_2018_and_2023)
 ```
@@ -227,7 +227,7 @@ age_table_data %>%
              age_25_to_34 = "25 to 35",
              age_35_to_54 = "35 to 54",
              age_55_to_64 = "55 to 64",
-             age_65_plus = "65 plus") %>% 
+             age_65_plus =  "65 and older") %>% 
   opt_stylize(style = 6, color = "blue") %>% 
   tab_header(title = "Number of CGM prescriptions by Scottish Healthboard compared to percercentage of people in each age group",
              subtitle = "In 2024") %>% 
