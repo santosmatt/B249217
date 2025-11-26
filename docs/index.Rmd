@@ -45,7 +45,7 @@ hb_names <- import_clean_names("https://www.opendata.nhs.scot/dataset/9f942fdb-e
 population_data_raw <- import_clean_names("https://www.opendata.nhs.scot/dataset/7f010430-6ce1-4813-b25c-f7f335bdc4dc/resource/27a72cc8-d6d8-430c-8b4f-3109a9ceadb1/download/hb2019_pop_est_03102025.csv")
 ```
 
-```{r}
+```{r population-data-adding-discrete_age-groups}
 #tidying health board population data and splitting ages into distinct groups
 population_data <- population_data_raw %>% 
   filter(sex == "All", year >= 2017, hb != "S92000003") %>% #removing uneeded data
@@ -55,9 +55,10 @@ population_data <- population_data_raw %>%
          age_35_to_54 = rowSums(.[,42:61]),
          age_55_to_64 = rowSums(.[,62:71]),
          age_65_plus = rowSums(.[,72:97])) %>%
-  select(year, hb, sex, all_ages, age_under_16:age_65_plus) # keeping only needed columns
-
-population_data_test <- population_data %>% 
+  select(year,hb,sex,all_ages,age_under_16:age_65_plus) #keeping only needed columns
+  
+#copying year 2024 data for 2025 as there is none
+population_data <- population_data %>% 
   filter(year == 2024) %>% 
   mutate(year = 2025) %>%
   rbind(population_data)
@@ -96,16 +97,16 @@ diabetes_by_healthboard <- import_clean_names(
 ```
 
 ```{r import-all-prescription-data}
-#Creating path for map function to import all health board data
-links <- read_csv(here("docs", "file_links.csv")) %>%
-  select(link) %>%
-  pull()
-
-#Loading all prescription data from 10/2017 to 2025 when CGMs were presribed
-raw_prescription_data <- links %>%
-  map(read_csv) %>% 
-  list_rbind() %>%
-  clean_names()
+# #Creating path for map function to import all health board data
+# links <- read_csv(here("docs", "file_links.csv")) %>%
+#   select(link) %>%
+#   pull()
+# 
+# #Loading all prescription data from 10/2017 to 2025 when CGMs were presribed
+# raw_prescription_data <- links %>%
+#   map(read_csv) %>% 
+#   list_rbind() %>%
+#   clean_names()
 ```
 
 ```{r tidying-CGM-data}
@@ -140,13 +141,6 @@ summary_function <- function(data, grouping, filtering){data%>%
 ```{r filtering-data-graph-hb-100k}
 #Adding health board names and population estimates to the CGM dataset and then calculating rate per 100k population
 graph_per_100k <- summary_function(data = data_cgm, grouping = c("paid_date_month", "hb_name", "hbt", "year"), filtering = hb_name)
-
-data_cgm %>% 
-    filter(!is.na(hb_name)) %>%
-    group_by(across(grouping)) %>% 
-    summarise(total_cgm = sum(paid_quantity)) %>%
-    left_join(population_data, join_by(hbt == hb, year == year)) %>% 
-    mutate(total_per_100k = (total_cgm/all_ages)*100000)
 ```
 
 ```{r graph-hb-100k}
@@ -172,7 +166,6 @@ cgm_map_data <- summary_function(data = data_cgm, grouping = c("hb_name","year",
   filter(year == 2023 | year == 2018) %>% 
   left_join(diabetes_by_healthboard, join_by(hb_name, year == year)) %>% 
   mutate(cgm_per_diabetic_patient = (total_cgm/number_diabetic_patients)) 
-  left_join(hb_map, join_by(hb_name)) 
 
 cgm_map_data_2018_and_2023 <- cgm_map_data %>% 
   select(hb_name, year,cgm_per_diabetic_patient) %>% 
