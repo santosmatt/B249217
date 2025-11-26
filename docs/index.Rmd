@@ -128,8 +128,8 @@ data_cgm <- data_cgm %>%
 
 # Results
 ```{r creating-function-summary}
-summary_function <- function(data, grouping, filtering){data%>% 
-    filter(!is.na({{filtering}})) %>%
+summary_function <- function(data, grouping){data%>% 
+    filter(!is.na(hb_name)) %>%
     group_by(across(grouping)) %>% 
     summarise(total_cgm = sum(paid_quantity)) %>%
     left_join(population_data, join_by(hbt == hb, year == year)) %>% 
@@ -140,21 +140,32 @@ summary_function <- function(data, grouping, filtering){data%>%
 
 ```{r filtering-data-graph-hb-100k}
 #Adding health board names and population estimates to the CGM dataset and then calculating rate per 100k population
-graph_per_100k <- summary_function(data = data_cgm, grouping = c("paid_date_month", "hb_name", "hbt", "year"), filtering = hb_name)
+cgm_prescription_by_year_data <- summary_function(data = data_cgm, grouping = c("paid_date_month", "hb_name", "hbt", "year"))
+```
+
+```{r graph-function}
+#Function to create graph of year bs CGM prescription per 100k
+#When passing in faceting variable must pit ~ in front of it
+faceted_graph_function <- function(data, faceting, legend_text_size){
+  data %>% 
+    ggplot(aes(x = paid_date_month, y = total_per_100k)) +
+    geom_line() +
+    facet_wrap(enquo(faceting)) +
+    theme_bw() +
+    labs(x = "Year", y = "CGM Prescriptions (per 100k)") +
+    theme(strip.text = element_text(size = legend_text_size)) +
+    scale_x_date(limits = as.Date(c(NA, "2025-12-01")))
+  }
 ```
 
 ```{r graph-hb-100k}
 #creating graph of CGM prescription per 100k by health board overtime
-graph_per_100k %>% 
-  ggplot(aes(x = paid_date_month, y = total_per_100k)) +
-  geom_line() +
-  facet_wrap(~hb_name) +
-  theme_bw() +
-  labs(title = "CGM prescriptions overtime",
-       subtitle = "By health board in Scotland",
-       x = "Year",
-       y = "CGM Prescriptions (per 100k)") +
-  theme(strip.text = element_text(size = 7))
+cgm_prescription_by_year_graph <- 
+  faceted_graph_function(cgm_prescription_by_year_data, ~hb_name, 7) +
+  labs(title = "CGM prescriptions from November 2017 to August 2025",
+       subtitle = "By health board in Scotland")
+
+cgm_prescription_by_year_graph
 ```
 
 The graph depicts all health boards increasing prescriptions in CGMs steadily overtime from November 2017 to August 2025. But there are geographic differences in the rate and total number of prescription between healthboards. NHS Dumfries and Galloway, Shetland and Western Isles prescribing more per 100,000 population in 2025 than any other health boards, and NHS Ayrshire and Arran, Tayside and Orkney having lower rates. 
@@ -162,7 +173,7 @@ The graph depicts all health boards increasing prescriptions in CGMs steadily ov
 ## Interactive map of CGM prescriptions/number of diabetes patients per heathboard in the years 2018 and 2023
 ```{r filtering-data-map}
 #Filtering data for CGM map by joining with needed databases and calculating totals
-cgm_map_data <- summary_function(data = data_cgm, grouping = c("hb_name","year","hbt"), filtering = hb_name) %>%
+cgm_map_data <- summary_function(data = data_cgm, grouping = c("hb_name","year","hbt")) %>%
   filter(year == 2023 | year == 2018) %>% 
   left_join(diabetes_by_healthboard, join_by(hb_name, year == year)) %>% 
   mutate(cgm_per_diabetic_patient = (total_cgm/number_diabetic_patients)) 
@@ -177,7 +188,7 @@ cgm_map_data_2018_and_2023 <- cgm_map_data %>%
 
 ```{r making-map}
 #Making and styling map
-cgm_map <- cgm_map_data_2018_and_2023 %>%
+cgm_map_2018_and_2023 <- cgm_map_data_2018_and_2023 %>%
   ggplot(aes(fill = cgm_per_diabetic_patient, geometry = geometry)) +
   geom_sf_interactive(
     aes(data_id = hb_name, 
@@ -185,11 +196,11 @@ cgm_map <- cgm_map_data_2018_and_2023 %>%
   scale_fill_distiller(palette = 3) +
   theme_void() +
   facet_grid(~year) +
-  labs(title = "Interactive map showing all Scottish health boards",
-       subtitle = "Coloured by number of CGMs prescribed per diabetic patient",
-       fill = "Number of CGMs prescribed\nper diabetic patient")
+  labs(title = "Interactive map showing prescription of CGMs \n per diabetic patient by Scottish health boards",
+       subtitle = "In the years 2018 and 2023",
+       fill = "Number of CGMs \n prescribed per diabetic \n patient per year")
 
-girafe(ggobj = cgm_map)
+girafe(ggobj = cgm_map_2018_and_2023)
 ```
 
 ## Table showing the proportion of people in each age group by board compared to number of CGM prescriptions in 2024
@@ -207,7 +218,16 @@ age_table_data %>%
   ungroup() %>% 
   select(hb_name, year, age_under_16:total_per_100k) %>% 
   gt() %>% 
-  fmt_percent(columns = age_under_16:age_65_plus, decimals = 2)
+  fmt_percent(columns = age_under_16:age_65_plus, decimals = 2) %>% 
+  cols_label(hb_name = "Health Board",
+             year = "Year",
+             total_per_100k = "Number of CGM prescriptions") %>% 
+  opt_stylize(style = 6, color = "blue") %>% 
+  tab_header(title = "Number of CGM prescriptions by Scottish Healthboard compared to percercentage of people in each age group",
+             subtitle = "In 2024") %>% 
+  tab_spanner(label = "Rate per 100k population",
+              columns = total_per_100k)
+  
 ```
 
 ## CGM prescriptions by GP practise SIMD
@@ -219,7 +239,7 @@ gp_population_by_simd <- gp_practice_data %>%
   summarise(total_gp_population = sum(practice_list_size))
 
 #Combing patients per SIMD into CGM data and changing for graph
-simd_graph_data <- data_cgm %>% 
+cgm_prescription_by_simd_data <- data_cgm %>% 
   left_join(gp_practice_data, join_by(gp_practice == practice_code)) %>% 
   left_join(simd_data, join_by(data_zone, hb)) %>% 
   filter(!is.na(gp_practice_name)) %>% 
@@ -230,17 +250,15 @@ simd_graph_data <- data_cgm %>%
 ```
 
 ```{r graph-creation-simd}
-#Creating and styling graph
-simd_graph_data %>% 
-  mutate(simd_decile = factor(paste("Decile", simd_decile), levels = paste("Decile", 1:10))) %>% 
-  ggplot(aes(x = paid_date_month, y = total_per_100k)) +
-  geom_line() +
-  facet_wrap(~simd_decile) +
-  theme_bw() +
-  labs(title = "CGM prescriptions overtime",
-       subtitle = "By SIMD in Scotland",
-       x = "Year",
-       y = "CGM Prescriptions (per 100k)")
+#Creating and styling graph for CGM prescriptions by SIMD 
+cgm_prescription_by_simd_graph <- cgm_prescription_by_simd_data %>% 
+  mutate(simd_decile = factor(paste("Decile", simd_decile), 
+                              levels = paste("Decile", 1:10))) %>% 
+  faceted_graph_function(., ~simd_decile, 10) +
+  labs(title = "CGM prescriptions from November 2017 to August 2025",
+       subtitle = "By SIMD in Scotland")
+
+cgm_prescription_by_simd_graph
 ```
 
 # Limitations
