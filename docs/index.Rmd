@@ -18,7 +18,6 @@ date: "2025-10-31"
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
-
 ```{r packages, results=FALSE}
 #importing required packages
 library(tidyverse)
@@ -72,11 +71,10 @@ data_cgm <- read_csv(here("data", "data_filtered", "data_cgm.csv"))
 
 ```{r hb-boundaries, results = FALSE}
 #importing health boards geographical boundaries 
-hb_map <- st_read(here("data","SG_NHS_HealthBoards_2019","SG_NHS_HealthBoards_2019.shp")) %>% 
+hb_map <- st_read(here("data", "SG_NHS_HealthBoards_2019", "SG_NHS_HealthBoards_2019.shp")) %>% 
   clean_names() %>% 
-  mutate(hb_name = paste("NHS", hb_name)) #chaning names to have NHS infront 
+  mutate(hb_name = paste("NHS", hb_name)) #changing names to have NHS infront 
 ```
-
 
 ```{r simd-import}
 #Importing SIMD data
@@ -99,32 +97,27 @@ diabetes_by_healthboard <- import_clean_names(
 
 ```{r import-all-prescription-data}
 #Creating path for map function to import all health board data
-  links <- read.csv(here("data", "file_links.csv")) %>%
+links <- read_csv(here("docs", "file_links.csv")) %>%
   select(link) %>%
   pull()
 
 #Loading all prescription data from 10/2017 to 2025 when CGMs were presribed
 raw_prescription_data <- links %>%
   map(read_csv) %>% 
-       # mutate(DMDCode = 0)) %>%
   list_rbind() %>%
   clean_names()
-
-population_data %>% 
-  ggplot(aes(x = year, y = all_ages)) +
-  geom_line()+
-  facet_wrap(~hb)
 ```
 
 ```{r tidying-CGM-data}
 #Combining health boards which changed codes boundary changes do not matter
-data_cgm <- raw_prescription_data %>% 
-  filter(str_detect(bnf_item_code, "214800001")) %>%
-  mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"), 
-         year = as.numeric(year(paid_date_month)),#done to allow joining
-         paid_date_month = parse_date_time(paid_date_month, "ym"),
-         mutate(hbt = coalesce(hbt2014, hbt))) %>% 
-  select(-c(hbt2014, prescribed_type, class_of_preparation_code))
+# data_cgm <- raw_prescription_data %>%
+#   filter(str_detect(bnf_item_code, "214800001")) %>%
+#   mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"),
+#          paid_date_month = parse_date_time(paid_date_month, "ym"),
+#          year = as.numeric(year(paid_date_month)),#done to allow joining
+#          hbt = coalesce(hbt2014, hbt)) %>%
+#   select(-c(hbt2014, prescribed_type, class_of_preparation_code, dmd_code)) %>%
+#   left_join(hb_names, join_by(hbt == hb))
 
 data_cgm <- data_cgm %>% 
   mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"), 
@@ -212,7 +205,6 @@ girafe(ggobj = cgm_map)
 #Filtering data for table
 age_table_data <- summary_function(data = data_cgm, grouping = c("hb_name","year","hbt")) %>% 
   mutate(across(age_under_16:age_65_plus, ~.x/all_ages))
-
 ```
 
 ```{r table-creation}
@@ -237,20 +229,11 @@ gp_population_by_simd <- gp_practice_data %>%
 simd_graph_data <- data_cgm %>% 
   left_join(gp_practice_data, join_by(gp_practice == practice_code)) %>% 
   left_join(simd_data, join_by(data_zone, hb)) %>% 
-  left_join(hb_names, join_by(hbt == hb)) %>% # remove
   filter(!is.na(gp_practice_name)) %>% 
   group_by(simd_decile, paid_date_month) %>% 
   summarise(total_cgm = sum(paid_quantity)) %>% 
   left_join(gp_population_by_simd, join_by(simd_decile)) %>% 
   mutate(total_per_100k = (total_cgm/total_gp_population)*100000)
-
-simd_graph_data <- data_cgm %>%
-  left_join(gp_practice_data, join_by(gp_practice == practice_code)) %>%
-  left_join(simd_data, join_by(data_zone, hb)) %>%
-  summary_function(data = ., grouping = c("simd_decile", "paid_date_month", "hbt", "year"), filtering = gp_practice_name) %>%
-  left_join(gp_population_by_simd, join_by(simd_decile)) %>%
-  mutate(total_per_100k = (total_cgm/total_gp_population)*100000)
-
 ```
 
 ```{r graph-creation-simd}
@@ -265,9 +248,7 @@ simd_graph_data %>%
        subtitle = "By SIMD in Scotland",
        x = "Year",
        y = "CGM Prescriptions (per 100k)")
-
 ```
-
 
 # Limitations
 
