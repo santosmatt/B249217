@@ -221,12 +221,23 @@ age_table_data %>%
   fmt_percent(columns = age_under_16:age_65_plus, decimals = 2) %>% 
   cols_label(hb_name = "Health Board",
              year = "Year",
-             total_per_100k = "Number of CGM prescriptions") %>% 
+             total_per_100k = "Number of CGM prescriptions (per 100K)",
+             age_under_16 = "Under 16",
+             age_16_to_24 = "16 to 24",
+             age_25_to_34 = "25 to 35",
+             age_35_to_54 = "35 to 54",
+             age_55_to_64 = "55 to 64",
+             age_65_plus = "65 plus") %>% 
   opt_stylize(style = 6, color = "blue") %>% 
   tab_header(title = "Number of CGM prescriptions by Scottish Healthboard compared to percercentage of people in each age group",
              subtitle = "In 2024") %>% 
-  tab_spanner(label = "Rate per 100k population",
-              columns = total_per_100k)
+  tab_spanner(label = "Age",
+              columns = age_under_16:age_65_plus,
+              id = "W" ) %>% #add to css
+  opt_css(css = "#W .gt_column_spanner {
+      border-bottom-color: White; 
+      border-bottom-width: 2px;
+    }")
   
 ```
 
