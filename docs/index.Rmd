@@ -67,12 +67,6 @@ population_data <- population_data %>%
   mutate(year = 2025) %>%
   rbind(population_data)
 ```
-# REMOVE
-
-```{r import-cgm-data}
-#reading csv for CGM that has been made
-data_cgm <- read_csv(here("data", "data_filtered", "data_cgm.csv"))
-```
 
 ```{r import-hb-boundaries, results = FALSE}
 #importing health boards geographical boundaries 
@@ -101,41 +95,37 @@ diabetes_by_healthboard <- import_clean_names(
 ```
 
 ```{r import-all-prescription-data}
-# #Creating path for map function to import all health board data
-# links <- read_csv(here("docs", "file_links.csv")) %>%
-#   select(link) %>%
-#   pull()
-# 
-# #Loading all prescription data from 10/2017 to 2025 when CGMs were presribed
-# raw_prescription_data <- links %>%
-#   map(read_csv) %>% 
-#   list_rbind() %>%
-#   clean_names()
+#Creating path for map function to import all health board data
+links <- read_csv(here("docs", "file_links.csv")) %>%
+  select(link) %>%
+  pull()
+
+#Loading all prescription data from 10/2017 to 2025 when CGMs were presribed
+raw_prescription_data <- links %>%
+  map(~read_csv(.x) %>% 
+        mutate(DMDCode = 0)) %>% #as some data sets don't have dmd code removing
+  list_rbind() %>%
+  clean_names()
 ```
 
 ```{r tidying-CGM-data}
 #Extracting only CGM data from whole prescription and cleaning
-# data_cgm <- raw_prescription_data %>%
-#   filter(str_detect(bnf_item_code, "214800001")) %>% #bnf code for CGMs chapter
-#   mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"),# some health boards changed names
-#          paid_date_month = parse_date_time(paid_date_month, "ym"),#changing format
-#          year = as.numeric(year(paid_date_month)),#done to allow joining
-#          hbt = coalesce(hbt2014, hbt)) %>% #making it so columns names are the same
-#   select(-c(hbt2014, prescribed_type, class_of_preparation_code, dmd_code)) %>%
-#   left_join(hb_names_data, join_by(hbt == hb)) %>%  #adding helath board names to rows
-#    filter(!is.na(hb_name)) #removing n/a columns
-
-data_cgm <- data_cgm %>% 
-  mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"), 
-         year = as.numeric(year(paid_date_month))) %>% 
-  left_join(hb_names_data, join_by(hbt == hb))
+data_cgm <- raw_prescription_data %>%
+  filter(str_detect(bnf_item_code, "214800001")) %>% #bnf code for CGMs chapter
+  mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"),# some health boards changed names
+         paid_date_month = parse_date_time(paid_date_month, "ym"),#changing format
+         year = as.numeric(year(paid_date_month)),#done to allow joining
+         hbt = coalesce(hbt2014, hbt)) %>% #making it so columns names are the same
+  select(-c(hbt2014, prescribed_type, class_of_preparation_code, dmd_code)) %>%
+  left_join(hb_names_data, join_by(hbt == hb)) %>%  #adding helath board names to rows
+   filter(!is.na(hb_name)) #removing n/a columns
 ```
 
 # Results
 ```{r creating-function-summary}
 #creating function which filters data find total CGM and total per 100k population
 #for grouping use c("") format and put all column names in brackets
-summary_function <- function(data, grouping){data%>% 
+summary_function <- function(data, grouping){data %>% 
     group_by(across(grouping)) %>% 
     summarise(total_cgm = sum(paid_quantity)) %>% #total number of CGMs per grouping
     left_join(population_data, join_by(hbt == hb, year == year)) %>% #population data add
@@ -209,7 +199,7 @@ cgm_map_2018_and_2023 <- cgm_map_data_2018_and_2023 %>%
        subtitle = "In the years 2018 and 2023", caption = "Figure 2",
        fill = "Number of CGMs \n prescribed per patient with \n diabetes mellitus per year")
 
-girafe(ggobj = cgm_map_2018_and_2023) #displays new map and allows interactivty 
+girafe(ggobj = cgm_map_2018_and_2023) #displays new map and allows interactivty
 ```
 
 Figure 2 depicts that all health boards have increased in adopting them from 2018 to 2023. In the first full year NHS Lothian, NHS Forth Valley and NHS Dumfries prescribed the most with the others lagging behind. But in 2023, more rural health boards were prescribing more per diabetic patient than less rural ones, except NHS Orkney. This reiterates that potentially they are using CGM to reduce geographical inequalities. 

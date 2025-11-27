@@ -5,11 +5,18 @@ body{
 
 h1{
 	font-size: 20pt;
+	color:blue;
 }
 
 h2{
   font-size:14pt;
+  color: darkblue;
 }
+
+#header{
+  color: blue !important;
+}
+
 
 div.gt_column_spanner {
       border-bottom-color: White !important; 
