@@ -4,7 +4,7 @@ body{
 }
 
 h1{
-	font-size: 18pt;
+	font-size: 20pt;
 }
 
 h2{
@@ -16,4 +16,23 @@ div.gt_column_spanner {
       border-bottom-width: 2px !important;
     }
     
-    
+pre {
+  font-family: Arial;
+  font-size: 10pt;
+}
+
+.gt_table .gt_table_body {
+  font-size: 10pt;
+}
+
+.gt_table .gt_table_labels {
+  font-size: 11pt;
+}
+
+.gt_table .gt_table_title {
+  font-size: 13pt;
+}
+
+.gt_table .gt_table_subtitle {
+  font-size: 12pt;
+}

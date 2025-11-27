@@ -12,10 +12,12 @@ output:
 date: "2025-10-31"
 ---
 # Introduction
-
+Diabetes mellitus (DM) prevalence in Scotland is increasing with 353,088 diagnosed at the end of 2023, circa 6.5% of the population.(1) Approximately 10.3% have type 1; 88.0% type 2 and 1.8% other forms of DM.(1) Poorly controlled DM is associated with a wide range of health complications, with a severe effect on patient’s health and quality of life, and a high health economic cost.  
+Maintaining normal blood glucose control is essential to reduce complications and was traditionally done intermittently by finger prick testing. Continuous glucose monitors (CGMs) allow for monitoring time-in-range of blood glucose levels allowing accurate DM management, which can connect to a patient’s smartphone giving alerts of abnormal blood sugar levels(2) It can also be linked to insulin pumps, injecting insulin into patients’ based on blood glucose levels, allowing for improved blood glucose control thus reducing complications(2)
+Despite these benefits, some patient’s groups may be unable to access CGMs creating health inequalities. Older adults are disproportionately affected by DM complications but they face barriers in using CGMs, including struggles interpreting results, hearing alerts and manually using the devices(3) In addition, socioeconomically deprivation groups have higher risk factors but are less likely to access CGM.(4) This report focuses on investigating differences in CGMs prescription over time between geographic areas in Scotland, and how barriers of age and deprivation affect CGM prescribing. Deprivation was assessed using the Scottish Index of Multiple Deprivation (SIMD) by GP practice.(5) This report mostly used open access data from Public Health Scotland.
 
 # Methods
-
+Most data used in this report was directly downloaded from the internet to increase reproducibility. The geographic data was downloaded from [data.gov.uk](https://maps.gov.scot/ATOM/shapefiles/SG_NHS_HealthBoards_2019.zip). The zip file was moved into the data folder, unzipped and imported into r markdown. The data for DM prevalence in 2018 and 2023 was obtained from the [Scottish Diabetes Survey 2018 and 2023](https://www.diabetesinscotland.org.uk/publications/#survey-docs) from the prevalence regional detail section and converted into a .csv file which was saved and uploaded to GitHub in the docs folder. After data was imported it was cleaned and analysed. 
 ```{r setup, include = TRUE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
@@ -23,8 +25,8 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```{r packages, results=FALSE}
 #importing required packages
 library(tidyverse)
-library(janitor)
-library(gt)
+library(janitor) #cleaning names
+library(gt) #tables
 library(here)
 library(sf) #draw geographical map
 library(ggiraph) #interactive maps
@@ -42,7 +44,7 @@ import_clean_names <- function(file_path){
 hb_names_data <- import_clean_names("https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv") %>% select(hb, hb_name)
 ```
 
-```{r hb-population-estimates}
+```{r import-hb-population-estimates}
 #importing health board population estimate data
 population_data_raw <- import_clean_names("https://www.opendata.nhs.scot/dataset/7f010430-6ce1-4813-b25c-f7f335bdc4dc/resource/27a72cc8-d6d8-430c-8b4f-3109a9ceadb1/download/hb2019_pop_est_03102025.csv")
 ```
@@ -50,7 +52,7 @@ population_data_raw <- import_clean_names("https://www.opendata.nhs.scot/dataset
 ```{r population-data-adding-discrete_age-groups}
 #tidying health board population data and splitting ages into distinct groups
 population_data <- population_data_raw %>% 
-  filter(sex == "All", year >= 2017, hb != "S92000003") %>% #removing uneeded data
+  filter(sex == "All", year >= 2017, hb != "S92000003") %>% #removing unneeded data
   mutate(age_under_16 = rowSums(.[,7:22]), # splitting ages into groups
          age_16_to_24 = rowSums(.[,23:31]),
          age_25_to_34 = rowSums(.[,32:41]),
@@ -59,7 +61,7 @@ population_data <- population_data_raw %>%
          age_65_plus = rowSums(.[,72:97])) %>%
   select(year,hb,sex,all_ages,age_under_16:age_65_plus) #keeping only needed columns
   
-#copying year 2024 data for 2025 as there is none
+#copying year 2024 data for 2025 as there is none and adding to orginal data set
 population_data <- population_data %>% 
   filter(year == 2024) %>% 
   mutate(year = 2025) %>%
@@ -67,16 +69,16 @@ population_data <- population_data %>%
 ```
 # REMOVE
 
-```{r cgm_data}
+```{r import-cgm-data}
 #reading csv for CGM that has been made
 data_cgm <- read_csv(here("data", "data_filtered", "data_cgm.csv"))
 ```
 
-```{r hb-boundaries, results = FALSE}
+```{r import-hb-boundaries, results = FALSE}
 #importing health boards geographical boundaries 
 hb_map <- st_read(here("data", "SG_NHS_HealthBoards_2019", "SG_NHS_HealthBoards_2019.shp")) %>% 
   clean_names() %>% 
-  mutate(hb_name = paste("NHS", hb_name)) #changing names to have NHS infront 
+  mutate(hb_name = paste("NHS", hb_name)) #changing names to have NHS in front 
 ```
 
 ```{r simd-import}
@@ -86,13 +88,13 @@ simd_data <- import_clean_names("https://www.opendata.nhs.scot/dataset/78d41fa9-
   select(data_zone, hb, simd_decile) #only keeping needed columns
 ```
 
-```{r gp-practice-data}
+```{r import-gp-practice-data}
 #importing data about gp practice names, locations and populations
 gp_practice_data <- import_clean_names("https://www.opendata.nhs.scot/dataset/f23655c3-6e23-4103-a511-a80d998adb90/resource/47557411-7eda-4278-9d6d-d26ed2ceab5a/download/practice_contact_details_20251001_o") %>% 
   select(practice_code:practice_list_size, hb, data_zone)#keeping only needed columns
 ```
 
-```{r diabetes-healthboard-numbers, results = FALSE}
+```{r import-diabetes-healthboard-numbers, results = FALSE}
 #importing data from file created for number of diabetic patients by health board
 diabetes_by_healthboard <- import_clean_names(
   here("docs","diabetes_rates_by_healthboard.csv"))
@@ -112,15 +114,16 @@ diabetes_by_healthboard <- import_clean_names(
 ```
 
 ```{r tidying-CGM-data}
-#Combining health boards which changed codes boundary changes do not matter
+#Extracting only CGM data from whole prescription and cleaning
 # data_cgm <- raw_prescription_data %>%
-#   filter(str_detect(bnf_item_code, "214800001")) %>%
-#   mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"),
-#          paid_date_month = parse_date_time(paid_date_month, "ym"),
+#   filter(str_detect(bnf_item_code, "214800001")) %>% #bnf code for CGMs chapter
+#   mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"),# some health boards changed names
+#          paid_date_month = parse_date_time(paid_date_month, "ym"),#changing format
 #          year = as.numeric(year(paid_date_month)),#done to allow joining
-#          hbt = coalesce(hbt2014, hbt)) %>%
+#          hbt = coalesce(hbt2014, hbt)) %>% #making it so columns names are the same
 #   select(-c(hbt2014, prescribed_type, class_of_preparation_code, dmd_code)) %>%
-#   left_join(hb_names_data, join_by(hbt == hb))
+#   left_join(hb_names_data, join_by(hbt == hb)) %>%  #adding helath board names to rows
+#    filter(!is.na(hb_name)) #removing n/a columns
 
 data_cgm <- data_cgm %>% 
   mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"), 
@@ -129,15 +132,14 @@ data_cgm <- data_cgm %>%
 ```
 
 # Results
-
-
 ```{r creating-function-summary}
+#creating function which filters data find total CGM and total per 100k population
+#for grouping use c("") format and put all column names in brackets
 summary_function <- function(data, grouping){data%>% 
-    filter(!is.na(hb_name)) %>%
     group_by(across(grouping)) %>% 
-    summarise(total_cgm = sum(paid_quantity)) %>%
-    left_join(population_data, join_by(hbt == hb, year == year)) %>% 
-    mutate(total_per_100k = (total_cgm/all_ages)*100000)}
+    summarise(total_cgm = sum(paid_quantity)) %>% #total number of CGMs per grouping
+    left_join(population_data, join_by(hbt == hb, year == year)) %>% #population data add
+    mutate(total_per_100k = (total_cgm/all_ages)*100000)} #rate per 100k
 ```
 
 ## CGM presriptions over time by healthboard
@@ -149,16 +151,17 @@ cgm_prescription_by_year_data <- summary_function(data = data_cgm, grouping = c(
 
 ```{r graph-function}
 #Function to create graph of year bs CGM prescription per 100k
-#When passing in faceting variable must pit ~ in front of it
+#When passing in faceting variable must put ~ in front of it
 faceted_graph_function <- function(data, faceting, legend_text_size){
   data %>% 
     ggplot(aes(x = paid_date_month, y = total_per_100k)) +
-    geom_line() +
+    geom_line() + #creating line graph
     facet_wrap(enquo(faceting)) +
     theme_bw() +
-    labs(x = "Year", y = "CGM Prescriptions (per 100k)") +
-    theme(strip.text = element_text(size = legend_text_size)) +
-    scale_x_date(limits = as.Date(c(NA, "2025-12-01")))
+    theme(panel.spacing = unit(0.5,"cm")) + #adjusts spacing to prevent overlap
+    labs(x = "Year", y = "CGM Prescriptions (per 100k)") + #adding axis labels
+    theme(strip.text = element_text(size = legend_text_size)) + #change legend text size
+    scale_x_date(limits = as.Date(c(NA, "2025-12-01"))) #adding year 2026 to graph
   }
 ```
 
@@ -167,52 +170,55 @@ faceted_graph_function <- function(data, faceting, legend_text_size){
 cgm_prescription_by_year_graph <- 
   faceted_graph_function(cgm_prescription_by_year_data, ~hb_name, 7) +
   labs(title = "CGM prescriptions from November 2017 to August 2025",
-       subtitle = "By health board in Scotland")
+       subtitle = "By health board in Scotland",
+       caption = "Figure 1")
 
 cgm_prescription_by_year_graph
 ```
 
-The graph depicts all health boards increasing prescriptions in CGMs steadily overtime from November 2017 to August 2025. But there are geographic differences in the rate and total number of prescription between healthboards. NHS Dumfries and Galloway, Shetland and Western Isles prescribing more per 100,000 population in 2025 than any other health boards, and NHS Ayrshire and Arran, Tayside and Orkney having lower rates. 
+Figure 1 shows a trend that all Scottish health boards are prescribing more CGMs steadily overtime from November 2017 to August 2025 probably due to their benefits. However, there are geographic differences in the rate of prescribing between health boards. NHS Dumfries and Galloway, NHS Shetland, and NHS Western Isles have higher rates in 2025, and NHS Ayrshire and Arran, NHS Tayside, and NHS Orkney have lower rates. The first adopters with significant higher rates were NHS Forth Valley and NHS Lothian with more rural health boards being slower in adoption. Possibly due to them having greater funds and better access to the technology. But most recently this trend has reversed with all rural health boards, except NHS Orkney, now prescribing CGMs at higher rates aiding diabetes management by using remote monitoring to reduce geographical restriction. 
 
 ## Interactive map of CGM prescriptions/number of diabetes patients per heathboard in the years 2018 and 2023
 ```{r filtering-data-map}
 #Filtering data for CGM map by joining with needed databases and calculating totals
 cgm_map_data <- summary_function(data = data_cgm, grouping = c("hb_name","year","hbt")) %>%
-  filter(year == 2023 | year == 2018) %>% 
+  filter(year == 2023 | year == 2018) %>% #keeping year 2023 and 2018
   left_join(diabetes_by_healthboard, join_by(hb_name, year == year)) %>% 
-  mutate(cgm_per_diabetic_patient = (total_cgm/number_diabetic_patients)) 
+  mutate(cgm_per_diabetic_patient = (total_cgm/number_diabetic_patients))
 
+#creating custom tooltip label for graph
 cgm_map_data_2018_and_2023 <- cgm_map_data %>% 
-  select(hb_name, year,cgm_per_diabetic_patient) %>% 
-  pivot_wider(names_from = year, values_from = cgm_per_diabetic_patient, names_prefix = "cgm_per_diabetic_patient_") %>% 
-  mutate(tooltip_text = paste(hb_name,"\n", "CGM prescriptions per diabetic patient 2018:", round(cgm_per_diabetic_patient_2018, 2),"\n", "CGM prescriptions per diabetic patient 2023:", round(cgm_per_diabetic_patient_2023, 2))) %>% 
-  right_join(cgm_map_data, join_by(hb_name)) %>% 
-  left_join(hb_map, join_by(hb_name)) 
+  select(hb_name, year,cgm_per_diabetic_patient) %>% #only keeping needed columns
+  pivot_wider(names_from = year, values_from = cgm_per_diabetic_patient, names_prefix = "cgm_per_diabetic_patient_") %>% #pivoting to allow for both years in same row
+  mutate(tooltip_text = paste(hb_name,"\n", "CGM prescriptions per diabetic patient 2018:", round(cgm_per_diabetic_patient_2018, 2),"\n", "CGM prescriptions per diabetic patient 2023:", round(cgm_per_diabetic_patient_2023, 2))) %>% #creating tooltip
+  right_join(cgm_map_data, join_by(hb_name)) %>% #adding new tool tip to cgm_map_data
+  left_join(hb_map, join_by(hb_name)) #adding map data
 ```
 
 ```{r making-map}
 #Making and styling map
-# cgm_map_2018_and_2023 <- cgm_map_data_2018_and_2023 %>%
-#   ggplot(aes(fill = cgm_per_diabetic_patient, geometry = geometry)) +
-#   geom_sf_interactive(
-#     aes(data_id = hb_name, 
-#         tooltip = tooltip_text)) +
-#   scale_fill_distiller(palette = 3) +
-#   theme_void() +
-#   facet_grid(~year) +
-#   labs(title = "Interactive map showing prescription of CGMs \n per patient with diabetes mellitus by Scottish health boards",
-#        subtitle = "In the years 2018 and 2023",
-#        fill = "Number of CGMs \n prescribed per patient with \n diabetes mellitus per year")
-# 
-# girafe(ggobj = cgm_map_2018_and_2023)
+cgm_map_2018_and_2023 <- cgm_map_data_2018_and_2023 %>%
+  ggplot(aes(fill = cgm_per_diabetic_patient, geometry = geometry)) +
+  geom_sf_interactive(
+    aes(data_id = hb_name,
+        tooltip = tooltip_text)) + #makes map interactive
+  scale_fill_distiller(palette = 3) + #color palette for map
+  theme_void() + #remove axis lines and background colour
+  facet_grid(~year) + #creating a map for each year
+  labs(title = "Interactive map showing prescription of CGMs \n per patient with diabetes mellitus by Scottish health boards",
+       subtitle = "In the years 2018 and 2023", caption = "Figure 2",
+       fill = "Number of CGMs \n prescribed per patient with \n diabetes mellitus per year")
+
+girafe(ggobj = cgm_map_2018_and_2023) #displays new map and allows interactivty 
 ```
 
-## Table showing the proportion of people in each age group by board compared to number of CGM prescriptions in 2024
+Figure 2 depicts that all health boards have increased in adopting them from 2018 to 2023. In the first full year NHS Lothian, NHS Forth Valley and NHS Dumfries prescribed the most with the others lagging behind. But in 2023, more rural health boards were prescribing more per diabetic patient than less rural ones, except NHS Orkney. This reiterates that potentially they are using CGM to reduce geographical inequalities. 
 
+## Table showing the proportion of people in each age group by board compared to number of CGM prescriptions in 2024
 ```{r table-filtering}
 #Filtering data for table
 age_table_data <- summary_function(data = data_cgm, grouping = c("hb_name","year","hbt")) %>% 
-  mutate(across(age_under_16:age_65_plus, ~.x/all_ages))
+  mutate(across(age_under_16:age_65_plus, ~.x/all_ages)) #calculates % by age group
 ```
 
 ```{r table-creation}
@@ -220,9 +226,9 @@ age_table_data <- summary_function(data = data_cgm, grouping = c("hb_name","year
 age_table_data %>% 
   filter(year == 2024) %>% 
   ungroup() %>% 
-  select(hb_name, year, age_under_16:total_per_100k) %>% 
+  select(hb_name, year, age_under_16:total_per_100k) %>% #chosing what columns include
   gt() %>% 
-  fmt_percent(columns = age_under_16:age_65_plus, decimals = 2) %>% 
+  fmt_percent(columns = age_under_16:age_65_plus, decimals = 2) %>% #adding percent sign
   cols_label(hb_name = "Health Board",
              year = "Year",
              total_per_100k = "Number of CGM prescriptions (per 100K)",
@@ -231,13 +237,16 @@ age_table_data %>%
              age_25_to_34 = "25 to 35",
              age_35_to_54 = "35 to 54",
              age_55_to_64 = "55 to 64",
-             age_65_plus =  "65 and older") %>% 
-  opt_stylize(style = 6, color = "blue") %>% 
+             age_65_plus =  "65 and older") %>% #relabbling columns
+  opt_stylize(style = 6, color = "blue") %>% #choses theme for table
   tab_header(title = "Number of CGM prescriptions by Scottish Healthboard compared to percercentage of people in each age group",
              subtitle = "In 2024") %>% 
   tab_spanner(label = "Age",
-              columns = age_under_16:age_65_plus)
+              columns = age_under_16:age_65_plus) %>% #line over ages 
+  tab_caption("Table 1")
 ```
+
+Table 1 depicts that in 2024 generally those health boards with a higher proportion of older people were prescribing more CGMs. Possibly because older people are more likely to have diabetes and suffer from complications associated with it so would benefit more from CGM prescription. It also suggests that older people are not being discriminated against and given equal access prescription of CGMs. This implies that barriers to using CGMs that older people may face are being reduced by implementation of appropriate policy. 
 
 ## CGM prescriptions by GP practise SIMD
 ```{r filtering-data-graph-cgm-by-simd}
@@ -251,7 +260,7 @@ gp_population_by_simd <- gp_practice_data %>%
 cgm_prescription_by_simd_data <- data_cgm %>% 
   left_join(gp_practice_data, join_by(gp_practice == practice_code)) %>% 
   left_join(simd_data, join_by(data_zone, hb)) %>% 
-  filter(!is.na(gp_practice_name)) %>% 
+  filter(!is.na(gp_practice_name)) %>% #removing gp practises not in data set
   group_by(simd_decile, paid_date_month) %>% 
   summarise(total_cgm = sum(paid_quantity)) %>% 
   left_join(gp_population_by_simd, join_by(simd_decile)) %>% 
@@ -265,17 +274,24 @@ cgm_prescription_by_simd_graph <- cgm_prescription_by_simd_data %>%
                               levels = paste("Decile", 1:10))) %>% 
   faceted_graph_function(., ~simd_decile, 10) +
   labs(title = "CGM prescriptions from November 2017 to August 2025",
-       subtitle = "By SIMD in Scotland")
+       subtitle = "By SIMD in Scotland", caption = "Figure 3")
 
 cgm_prescription_by_simd_graph
 ```
 
+Figure 3 depicts that all SIMDs implemented the prescription of CGMs at a similar rate with none being earlier or late adopters except for decile 10 which has risen at a slower rate. In 2025 all the deciles except for 10 have roughly the same prescription rate. This indicates that those in the least deprived decile may be experiencing unequal access to CGM prescription possibly due to access to private health care. 
 # Limitations
+This report shows how CGM prescription varies within Scotland, but it does have its limitations. It relies on prescription data which has its limits. In addition, data used was only community prescriptions so may miss in-patient hospital and private health prescriptions. The number of DM patients’ data used did not consider DM type 1 and 2 patients. Regarding, using population data, population estimates have their own limitations, and were not available for 2025 so the assumption was made that it was the same as 2024. Most SIMDs do not have a GP practice associated with them so patients living in one SIMD prescribed CGMs would be counted as being in another. In addition, the GP practice data used was from 2025 so for earlier years the GP practice population may be different, and some GP practices may have moved location or disappeared. Despite this, the reports insights have limitations.
 
 # Conclusions
- 
-# References 
+DM rates in Scotland are continuing to rise year on year but so are prescriptions of CGMs. This technology allows for improved management of DM and when integrated with insulin pumps allows for a significant reduction in complications, improving patient’s lives. More rural Scottish health boards where initially slower in prescribing CGMs but are now prescribing them more than their less rural counterparts, except NHS Orkney, which has similar rates to urban boards. This could be because CGMs allow for better remote monitoring reducing geographical inequalities. In addition, age was found not to be affecting the prescription rate of CGMs, reducing inequalities. An unexpected finding was that people whose GP practice was in the least deprived decile were less likely to be prescribed CGMs, contrary to published literature(4) and requires further investigation possibly suggesting research/publication bias. In addition, further research needs to focus on further investigating the difference in prescriptions of CGMs between the more and less rural health boards, such as how the greater implementation in rural areas is impacting patient care and experience. Furthermore, having access to the Scottish Care Information Diabetes Collaboration database would allow for greater data exploration. Ultimately, CGM prescription rate has increased over the years in Scotland with those who are older not facing inequalities regarding access but those who are least deprived potentially are. 
 
+# References 
+1. Scottish Diabetes Group. Scottish Diabetes Survey 2023 [Internet]. 2023 [cited 2025 Nov 26]. Available from: https://www.diabetesinscotland.org.uk/wp-content/uploads/2024/11/Scottish-Diabetes-Survey-2023.pdf
+2. Edward R, Priefer R. A comparison of continuous glucose monitors (CGMs) in diabetes management: A systematic literature review. Prim Care Diabetes [Internet]. 2023 Dec 1 [cited 2025 Nov 26];17(6):529–34. Available from: https://www.sciencedirect.com/science/article/abs/pii/S175199182300178X
+3. Prasad-Reddy L, Godina A, Chetty A, Isaacs D. Use of Continuous Glucose Monitoring in Older Adults: A Review of Benefits, Challenges and Future Directions. touchREVIEWS in Endocrinology [Internet]. 2022 Nov 29 [cited 2025 Nov 26];18(2):116. Available from: https://pmc.ncbi.nlm.nih.gov/articles/PMC9835808/
+4. Barnard-Kelly K, Parkin CG. Health-Care Disparities in the Use of Diabetes Technologies in the UK. International Journal of Diabetes and Technology [Internet]. 2022 Apr [cited 2025 Nov 26];1(2):56–62. Available from: https://journals.lww.com/ijdt/fulltext/2022/01020/health_care_disparities_in_the_use_of_diabetes.3.aspx
+5. SIMD (Scottish Index of Multiple Deprivation) [Internet]. [cited 2025 Nov 26]. Available from: https://simd.scot/#/simd2020/BTTTFTT/9/-4.0000/55.9000/
 
 
 
