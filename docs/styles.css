@@ -1,0 +1,19 @@
+body{
+  font-size: 10pt;
+  font-family: Arial;
+}
+
+h1{
+	font-size: 18pt;
+}
+
+h2{
+  font-size:14pt;
+}
+
+div.gt_column_spanner {
+      border-bottom-color: White !important; 
+      border-bottom-width: 2px !important;
+    }
+    
+    

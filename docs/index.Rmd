@@ -7,6 +7,8 @@ output:
     toc_float: true
     number_sections: true
     code_folding: show 
+    theme: cosmo 
+    css: styles.css
 date: "2025-10-31"
 ---
 # Introduction
@@ -37,7 +39,7 @@ import_clean_names <- function(file_path){
 
 ```{r import-hb-names}
 #loading all health board names
-hb_names <- import_clean_names("https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv") %>% select(hb, hb_name)
+hb_names_data <- import_clean_names("https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv") %>% select(hb, hb_name)
 ```
 
 ```{r hb-population-estimates}
@@ -118,15 +120,17 @@ diabetes_by_healthboard <- import_clean_names(
 #          year = as.numeric(year(paid_date_month)),#done to allow joining
 #          hbt = coalesce(hbt2014, hbt)) %>%
 #   select(-c(hbt2014, prescribed_type, class_of_preparation_code, dmd_code)) %>%
-#   left_join(hb_names, join_by(hbt == hb))
+#   left_join(hb_names_data, join_by(hbt == hb))
 
 data_cgm <- data_cgm %>% 
   mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"), 
          year = as.numeric(year(paid_date_month))) %>% 
-  left_join(hb_names, join_by(hbt == hb))
+  left_join(hb_names_data, join_by(hbt == hb))
 ```
 
 # Results
+
+
 ```{r creating-function-summary}
 summary_function <- function(data, grouping){data%>% 
     filter(!is.na(hb_name)) %>%
@@ -188,19 +192,19 @@ cgm_map_data_2018_and_2023 <- cgm_map_data %>%
 
 ```{r making-map}
 #Making and styling map
-cgm_map_2018_and_2023 <- cgm_map_data_2018_and_2023 %>%
-  ggplot(aes(fill = cgm_per_diabetic_patient, geometry = geometry)) +
-  geom_sf_interactive(
-    aes(data_id = hb_name, 
-        tooltip = tooltip_text)) +
-  scale_fill_distiller(palette = 3) +
-  theme_void() +
-  facet_grid(~year) +
-  labs(title = "Interactive map showing prescription of CGMs \n per patient with diabetes mellitus by Scottish health boards",
-       subtitle = "In the years 2018 and 2023",
-       fill = "Number of CGMs \n prescribed per patient with \n diabetes mellitus per year")
-
-girafe(ggobj = cgm_map_2018_and_2023)
+# cgm_map_2018_and_2023 <- cgm_map_data_2018_and_2023 %>%
+#   ggplot(aes(fill = cgm_per_diabetic_patient, geometry = geometry)) +
+#   geom_sf_interactive(
+#     aes(data_id = hb_name, 
+#         tooltip = tooltip_text)) +
+#   scale_fill_distiller(palette = 3) +
+#   theme_void() +
+#   facet_grid(~year) +
+#   labs(title = "Interactive map showing prescription of CGMs \n per patient with diabetes mellitus by Scottish health boards",
+#        subtitle = "In the years 2018 and 2023",
+#        fill = "Number of CGMs \n prescribed per patient with \n diabetes mellitus per year")
+# 
+# girafe(ggobj = cgm_map_2018_and_2023)
 ```
 
 ## Table showing the proportion of people in each age group by board compared to number of CGM prescriptions in 2024
@@ -232,13 +236,7 @@ age_table_data %>%
   tab_header(title = "Number of CGM prescriptions by Scottish Healthboard compared to percercentage of people in each age group",
              subtitle = "In 2024") %>% 
   tab_spanner(label = "Age",
-              columns = age_under_16:age_65_plus,
-              id = "W" ) %>% #add to css
-  opt_css(css = "#W .gt_column_spanner {
-      border-bottom-color: White; 
-      border-bottom-width: 2px;
-    }")
-  
+              columns = age_under_16:age_65_plus)
 ```
 
 ## CGM prescriptions by GP practise SIMD
@@ -274,6 +272,12 @@ cgm_prescription_by_simd_graph
 
 # Limitations
 
-# Conclusions 
-
+# Conclusions
+ 
 # References 
+
+
+
+
+ 
+
