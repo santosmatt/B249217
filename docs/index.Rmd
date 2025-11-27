@@ -117,8 +117,18 @@ data_cgm <- raw_prescription_data %>%
          year = as.numeric(year(paid_date_month)),#done to allow joining
          hbt = coalesce(hbt2014, hbt)) %>% #making it so columns names are the same
   select(-c(hbt2014, prescribed_type, class_of_preparation_code, dmd_code)) %>%
-  left_join(hb_names_data, join_by(hbt == hb)) %>%  #adding helath board names to rows
+  left_join(hb_names_data, join_by(hbt == hb)) %>%  #adding health board names to rows
    filter(!is.na(hb_name)) #removing n/a columns
+
+data_cgm_test <- raw_prescription_data %>%
+  filter(str_detect(bnf_item_code, "214800001")) %>% #bnf code for CGMs chapter
+  mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"), # some health boards changed names
+         paid_date_month = parse_date_time(paid_date_month, "ym"),#changing format
+         year = as.numeric(year(paid_date_month)),#done to allow joining
+         hbt = coalesce(hbt2014, hbt)) %>% #making it so columns names are the same
+  select(-c(hbt2014, prescribed_type, class_of_preparation_code, dmd_code)) %>%
+  left_join(hb_names_data, join_by(hbt == hb)) %>%  #adding health board names to rows
+   filter(!is.na(hb_name))
 ```
 
 # Results
@@ -172,15 +182,18 @@ Figure 1 shows a trend that all Scottish health boards are prescribing more CGMs
 ```{r filtering-data-map}
 #Filtering data for CGM map by joining with needed databases and calculating totals
 cgm_map_data <- summary_function(data = data_cgm, grouping = c("hb_name","year","hbt")) %>%
-  filter(year == 2023 | year == 2018) %>% #keeping year 2023 and 2018
+  filter(year == 2023| year == 2018) %>% #keeping year 2023 and 2018
   left_join(diabetes_by_healthboard, join_by(hb_name, year == year)) %>% 
-  mutate(cgm_per_diabetic_patient = (total_cgm/number_diabetic_patients))
+  mutate(cgm_per_diabetic_patient = (total_cgm/number_diabetic_patients)) %>% 
+  filter(!is.na(all_ages))
 
 #creating custom tooltip label for graph
 cgm_map_data_2018_and_2023 <- cgm_map_data %>% 
   select(hb_name, year,cgm_per_diabetic_patient) %>% #only keeping needed columns
   pivot_wider(names_from = year, values_from = cgm_per_diabetic_patient, names_prefix = "cgm_per_diabetic_patient_") %>% #pivoting to allow for both years in same row
-  mutate(tooltip_text = paste(hb_name,"\n", "CGM prescriptions per diabetic patient 2018:", round(cgm_per_diabetic_patient_2018, 2),"\n", "CGM prescriptions per diabetic patient 2023:", round(cgm_per_diabetic_patient_2023, 2))) %>% #creating tooltip
+  mutate(cgm_per_diabetic_patient_2018 = as.numeric(cgm_per_diabetic_patient_2018),
+    cgm_per_diabetic_patient_2023 = as.numeric(cgm_per_diabetic_patient_2023),
+    tooltip_text = paste(hb_name,"\n", "CGM prescriptions per diabetic patient 2018:", round(cgm_per_diabetic_patient_2018, 2),"\n", "CGM prescriptions per diabetic patient 2023:", round(cgm_per_diabetic_patient_2023, 2))) %>% #creating tooltip
   right_join(cgm_map_data, join_by(hb_name)) %>% #adding new tool tip to cgm_map_data
   left_join(hb_map, join_by(hb_name)) #adding map data
 ```
@@ -199,7 +212,7 @@ cgm_map_2018_and_2023 <- cgm_map_data_2018_and_2023 %>%
        subtitle = "In the years 2018 and 2023", caption = "Figure 2",
        fill = "Number of CGMs \n prescribed per patient with \n diabetes mellitus per year")
 
-girafe(ggobj = cgm_map_2018_and_2023) #displays new map and allows interactivty
+girafe(ggobj = cgm_map_2018_and_2023) #displays new map and allows interactivity
 ```
 
 Figure 2 depicts that all health boards have increased in adopting them from 2018 to 2023. In the first full year NHS Lothian, NHS Forth Valley and NHS Dumfries prescribed the most with the others lagging behind. But in 2023, more rural health boards were prescribing more per diabetic patient than less rural ones, except NHS Orkney. This reiterates that potentially they are using CGM to reduce geographical inequalities. 
