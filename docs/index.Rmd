@@ -119,16 +119,6 @@ data_cgm <- raw_prescription_data %>%
   select(-c(hbt2014, prescribed_type, class_of_preparation_code, dmd_code)) %>%
   left_join(hb_names_data, join_by(hbt == hb)) %>%  #adding health board names to rows
    filter(!is.na(hb_name)) #removing n/a columns
-
-data_cgm_test <- raw_prescription_data %>%
-  filter(str_detect(bnf_item_code, "214800001")) %>% #bnf code for CGMs chapter
-  mutate(hbt = recode(hbt, "S08000018" = "S08000029", "S08000021" = "S08000031", "S08000023" = "S08000032", "S08000027" = "S08000030"), # some health boards changed names
-         paid_date_month = parse_date_time(paid_date_month, "ym"),#changing format
-         year = as.numeric(year(paid_date_month)),#done to allow joining
-         hbt = coalesce(hbt2014, hbt)) %>% #making it so columns names are the same
-  select(-c(hbt2014, prescribed_type, class_of_preparation_code, dmd_code)) %>%
-  left_join(hb_names_data, join_by(hbt == hb)) %>%  #adding health board names to rows
-   filter(!is.na(hb_name))
 ```
 
 # Results
